@@ -1,0 +1,7 @@
+[package]
+name = "costcut-infer"
+version = "0.1.0"
+edition = "2021"
+description = "CostCut Infer（Rust 版，性能优先——纯 std 推理运行时）"
+
+[dependencies]

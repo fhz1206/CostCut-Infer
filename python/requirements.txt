@@ -1,0 +1,9 @@
+# Python 3.14 Compatible Versions
+torch>=2.4.0
+transformers>=4.44.0
+accelerate>=0.34.0
+sentencepiece>=0.2.0
+protobuf>=4.25.0
+safetensors>=0.4.0
+# AWQ 4bit 量化模型加载必需（transformers 5.x 依赖 gptqmodel 而非 autoawq）
+gptqmodel>=2.0.0

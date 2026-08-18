@@ -1,0 +1,63 @@
+# ===== CostCut Infer .gitignore =====
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- 虚拟环境 ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Rust（构建产物；Cargo.lock 保留提交——二进制 crate）----
+target/
+**/*.rs.bk
+
+# ---- 模型权重 / 大文件（不提交——体积大）----
+# 整个模型目录（权重 + 缓存——不提交）
+models/
+models/**/*.safetensors
+models/**/*.dspark
+models/**/*.gguf
+models/**/*.bin
+models/**/*.pt
+models/**/*.pth
+models/**/*.onnx
+models/**/*.npz
+models/**/*.ggml
+*.safetensors
+*.dspark
+*.gguf
+
+# ---- 日志 / 环境变量 ----
+*.log
+.env
+.env.*
+!.env.example
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 本地开发 / 参考目录（不提交）----
+# 本地 vllm 克隆（参考用——不提交）
+vllm/
+# 本地测试配置目录（不提交）
+test_config/
+# Agent 本地配置（记忆等——不提交）
+.atomcode/
