@@ -124,7 +124,10 @@ class EngineConfig:
             top_k=int(inf.get("top_k", 0)),
             repetition_penalty=float(inf.get("repetition_penalty", 1.0)),
             max_new_tokens=int(inf.get("max_new_tokens", 2048)),
-            system_prompt=str(inf.get("system_prompt", "You are a helpful assistant.")),
+            # 强制使用 engine.toml 的 system_prompt 键（缺省时用中文默认——不用英文 fallback）
+            system_prompt=str(inf.get(
+                "system_prompt",
+                "你是一个乐于助人的中文助手。请始终用中文回答，保持准确、简洁、条理清晰。")),
             compute_dtype=str(inf.get("compute_dtype", "float32")),
             expert_parallel=bool(inf.get("expert_parallel", False)),
             int4_fused_matmul=bool(inf.get("int4_fused_matmul", False)),

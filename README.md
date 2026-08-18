@@ -1,5 +1,9 @@
 # CostCut Infer
 
+<p align="center">
+  <img src="docs/source/logos/CostCut-Infer-logo.png" alt="CostCut Infer" width="320"/>
+</p>
+
 > CPU-only MoE 大模型推理运行时（Python + Rust 双版本，均处于支持维护状态）
 > 面向 12GB 内存的无 GPU 笔记本：配置驱动多 MoE 架构、多量化格式、离线可构建。
 
@@ -7,11 +11,15 @@ CostCut Infer 提供**两个独立版本**，定位互补、并行维护：
 
 | 版本 | 定位 | 核心优势 |
 |---|---|---|
-| **Rust 版**（`rust/`） | **性能优先** | 纯 std 零依赖、离线可构建；并行 matmul（实测 2.56x）；int4/FP8 原生转换；编译零开销 |
-| **Python 版**（`python/`） | **扩展性优先** | 插件注册表（注意力 / MoE 格式 / 量化方法 / 架构归一化四注册点即插即用）；真实模型推理（torch BLAS 内核）；投机解码 / GGUF / 多量化 |
+| **Rust 版**（`rust/`） | **性能优化路径** | 纯 std 零依赖、离线可构建；并行 matmul（实测 2.56x）；int4/FP8 原生转换；编译零开销 |
+| **Python 版**（`python/`） | **扩展性优先（新功能首发）** | 插件注册表（注意力 / MoE 格式 / 量化方法 / 架构归一化四注册点即插即用）；真实模型推理（torch BLAS 内核）；投机解码 / GGUF / 多量化 |
 
 两个版本均持续支持维护：**Rust 版持续追求性能**（BLAS/SIMD 内核、真实模型接入），
 **Python 版持续追求扩展性**（新架构 / 新量化 / 新组件一个装饰器接入）。
+
+> **重要**：Rust 版并非纯性能优先——**新功能会优先在 Python 版实现**（扩展性与验证更快），
+> 稳定后按需同步到 Rust 版做性能优化。Rust 版定位为**既有功能的性能优化路径**，
+> 而非新功能的首发版本；两版同步状态见 `docs/Python到Rust同步清单.md`。
 
 ## 特性
 

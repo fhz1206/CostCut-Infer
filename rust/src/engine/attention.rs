@@ -214,7 +214,11 @@ pub fn recurrent_delta_rule(q: &Tensor, k: &Tensor, v: &Tensor, g: &Tensor, beta
         let st = &mut state[hh * kd * vd..(hh + 1) * kd * vd];
         let gt = g.get(0, hh).exp();
         let betat = beta.get(0, hh);
-        // kv_mem (vd) = sum_kd last[kd, vd] * k[kd]
+        // 先衰减（Python：last = last * g_t）——kv_mem 须用衰减后的状态
+        for x in st.iter_mut() {
+            *x *= gt;
+        }
+        // kv_mem (vd) = sum_kd last[kd, vd] * k[kd]（衰减后的 last）
         let mut kv_mem = vec![0.0f32; vd];
         for kk in 0..kd {
             let kk_v = k.get(0, hh * kd + kk) * kinv;
@@ -222,12 +226,12 @@ pub fn recurrent_delta_rule(q: &Tensor, k: &Tensor, v: &Tensor, g: &Tensor, beta
                 kv_mem[vv] += st[kk * vd + vv] * kk_v;
             }
         }
-        // last = last * g.exp()；delta = (v - kv_mem) * beta；last += k ⊗ delta
+        // delta = (v - kv_mem) * beta；last += k ⊗ delta（已衰减——不再乘 gt）
         for kk in 0..kd {
             let kk_v = k.get(0, hh * kd + kk) * kinv;
             for vv in 0..vd {
                 let idx = kk * vd + vv;
-                st[idx] = st[idx] * gt + kk_v * ((v.get(0, hh * vd + vv) - kv_mem[vv]) * betat);
+                st[idx] += kk_v * ((v.get(0, hh * vd + vv) - kv_mem[vv]) * betat);
             }
         }
         // core (vd) = sum_kd last[kd, vd] * q[kd] * scale
@@ -621,6 +625,19 @@ mod tests {
             state = Some(s);
             for d in 0..h * vd { r_out[i * h * vd + d] = c.get(0, d); }
         }
+        // 诊断：逐 token 误差（首 token=chunk 内基座；后续=状态递推）
+        let mut per_tok = vec![0.0f32; l];
+        for i in 0..l {
+            per_tok[i] = (0..h * vd)
+                .map(|d| (c_out.data[i * h * vd + d] - r_out[i * h * vd + d]).abs())
+                .fold(0.0f32, f32::max);
+        }
+        let first5: Vec<String> = per_tok[..5].iter().map(|v| format!("{:.2e}", v)).collect();
+        let last5: Vec<String> = per_tok[l - 5..].iter().map(|v| format!("{:.2e}", v)).collect();
+        let (mi, mv) = per_tok.iter().enumerate()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap();
+        println!("per-token err 前5: {} | 后5: {} | 最大 t={mi} err={mv:.2e}",
+                 first5.join(" "), last5.join(" "));
         let max_err = (0..l * h * vd)
             .map(|i| (c_out.data[i] - r_out[i]).abs())
             .fold(0.0f32, f32::max);

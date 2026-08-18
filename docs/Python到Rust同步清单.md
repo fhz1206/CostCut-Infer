@@ -19,11 +19,11 @@
 
 | 优先级 | Python 功能 | Rust 同步内容 | 备注 |
 |---|---|---|---|
-| **P0** | 注册表（registry 四注册点 + vision 注册点） | Rust trait/枚举分发（attention/moe_format/quant_method/arch_normalizer/vision） | 当前 Rust 为手写分发 |
+| **P0** | 注册表（registry 四注册点 + vision 注册点） | Rust trait/枚举分发（attention/moe_format/quant_method/arch_normalizer/vision） | ✅ **已同步**：`engine/registry.rs`（Attention trait + 注册/获取/列表 + standard 构造器） |
 | **P0** | GGUF 解析与反量化 | `io::gguf`（元数据/张量索引/名称映射/K 系列量化） | 需参考 llama.cpp k-quants 源码 |
 | P1 | dspark 投机解码 | `engine::speculator`（草稿-验证-接受 + markov_head） | 5 层实测慢（开关化） |
-| P1 | compute_dtype 配置 | Rust 反量化输出 dtype 参数（fp32 默认/fp16） | 当前统一 f32 |
-| P1 | KV 预分配（kv_append） | 预分配 + 位置索引（owned-tensor 收益有限——评估后定） | Python 已对齐 |
+| P1 | compute_dtype 配置 | Rust 反量化输出 dtype 参数（fp32 默认/fp16） | ⚠️ **已评估**：Rust 张量为 f32-only——fp16 输出需 fp16 张量类型/计算内核（归入 P2 不同精度计算）；Python 侧 compute_dtype 已配置化 |
+| P1 | KV 预分配（kv_append） | 预分配 + 位置索引（owned-tensor 收益有限——评估后定） | ⚠️ **已评估**：Rust owned-tensor 切片即拷贝——预分配收益有限——**保持 concat_rows**（与 Python 的对齐结论一致） |
 | P2 | 不同精度计算（fp16/bf16 原生） | 内核级 fp16 matmul（当前 f32 统一） | 视硬件 |
 | P2 | 多模态（vision 注册点） | vision 编码器 trait（依赖/模型就绪后） | 见 docs/多模态适配方案.md |
 
