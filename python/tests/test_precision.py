@@ -12,7 +12,7 @@ from liteengine.model_config import load_model_config
 from liteengine.moe import torch_weight_native
 from liteengine.quant import dequantize_fp8
 
-MODEL_DIR = "models/Qwen3.6-35B-A3B-AWQ-4bit"
+MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
 
 
 class TestTorchDtype(unittest.TestCase):

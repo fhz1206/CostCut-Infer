@@ -4,7 +4,7 @@ model = "Qwen3.6-35B-A3B-AWQ-4bit"
 
 [model]
 name = "Qwen3.6-35B-A3B-AWQ-4bit"
-path = "models/Qwen3.6-35B-A3B-AWQ-4bit"
+path = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
 expert_cache_max = 128
 
 [inference]

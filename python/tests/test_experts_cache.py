@@ -17,7 +17,7 @@ from liteengine.cache import Cache, ExpertCache
 from liteengine.loader import WeightStore
 from liteengine.model import Qwen3_5MoeModel, load_text_config
 
-MODEL_DIR = "models/Qwen3.6-35B-A3B-AWQ-4bit"
+MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
 N_LAYERS = 5
 VOCAB = 248320
 

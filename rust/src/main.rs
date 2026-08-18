@@ -18,17 +18,18 @@ use core::tensor::Tensor;
 fn synthetic_model() -> engine::model::Model {
     let (hidden, h, kvh, hd) = (32usize, 4usize, 2usize, 8usize);
     let (e, inter, vocab) = (8usize, 16usize, 64usize);
-    let attn = engine::attention::StandardAttention {
-        num_heads: h,
-        num_kv_heads: kvh,
-        head_dim: hd,
-        rope_dim: 8,
-        scaling: (hd as f32).powf(-0.5),
-        q_w: Tensor::from_vec(h * hd, hidden, vec![0.05; h * hd * hidden]),
-        k_w: Tensor::from_vec(kvh * hd, hidden, vec![0.05; kvh * hd * hidden]),
-        v_w: Tensor::from_vec(kvh * hd, hidden, vec![0.05; kvh * hd * hidden]),
-        o_w: Tensor::from_vec(hidden, h * hd, vec![0.05; hidden * h * hd]),
-    };
+    let attn: Box<dyn engine::registry::Attention> =
+        Box::new(engine::attention::StandardAttention {
+            num_heads: h,
+            num_kv_heads: kvh,
+            head_dim: hd,
+            rope_dim: 8,
+            scaling: (hd as f32).powf(-0.5),
+            q_w: Tensor::from_vec(h * hd, hidden, vec![0.05; h * hd * hidden]),
+            k_w: Tensor::from_vec(kvh * hd, hidden, vec![0.05; kvh * hd * hidden]),
+            v_w: Tensor::from_vec(kvh * hd, hidden, vec![0.05; kvh * hd * hidden]),
+            o_w: Tensor::from_vec(hidden, h * hd, vec![0.05; hidden * h * hd]),
+        });
     let layer = engine::layer::DecoderLayer {
         eps: 1e-6,
         input_norm_w: vec![1.0; hidden],
@@ -58,10 +59,21 @@ fn synthetic_model() -> engine::model::Model {
 }
 
 fn main() {
-    println!("CostCut Infer（Rust 版，性能优先——纯 std：加载/反量化/前向/生成/并行 matmul）");
+    // 默认 = 交互式 CLI；--smoke/--bench/--test = 开发冒烟（测试代码仅开发时使用）
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--smoke" || a == "--bench" || a == "--test") {
+        run_smoke();
+    } else {
+        run_cli();
+    }
+}
+
+/// 开发模式冒烟（M1-M4 + int4 对比——仅开发时运行）。
+fn run_smoke() {
+    println!("[dev] CostCut Infer 冒烟（--smoke：加载/反量化/前向/生成/并行 matmul）");
 
     // M1 冒烟：加载真实模型（Qwen3.6-35B-A3B-AWQ-4bit）专家 0 的 gate_proj 权重
-    let shard = "../models/Qwen3.6-35B-A3B-AWQ-4bit/model-00001-of-00006.safetensors";
+    let shard = "../python/models/Qwen3.6-35B-A3B-AWQ-4bit/model-00001-of-00006.safetensors";
     let prefix = "model.language_model.layers.0.mlp.experts.0.gate_proj";
     match SafeTensors::open(shard) {
         Ok(st) => {
@@ -146,4 +158,46 @@ fn main() {
     let same_i = (0..r1.data.len()).all(|i| (r1.data[i] - r2.data[i]).abs() < 1e-3);
     println!("int4 两步 {:?} vs 融合 {:?} 结果一致={}",
              t2s, t_fused, same_i);
+}
+
+/// 默认入口：交互式 CLI（与 Python cli_chat 输出格式一致——横幅/You:/Assistant:）。
+fn run_cli() {
+    use std::io::Write;
+    // 启动横幅（与 Python cli_chat 一致）
+    println!("{}", "=".repeat(50));
+    println!("CLI Chat (CostCut Infer 推理引擎)");
+    println!("Default Model: Qwen3.6-35B-A3B-AWQ-4bit");
+    println!("{}", "=".repeat(50));
+    println!("[System] 投机解码：已禁用（标准自回归）");
+    let tok = match crate::io::tokenizer::Tokenizer::load(
+        "../python/models/Qwen3.6-35B-A3B-AWQ-4bit") {
+        Ok(t) => t,
+        Err(e) => {
+            println!("[System] tokenizer 加载失败: {e}");
+            return;
+        }
+    };
+    let m = synthetic_model();   // 真实模型组装（from_real）接入为后续
+    loop {
+        print!("\nYou: ");
+        let _ = std::io::stdout().flush();
+        let mut line = String::new();
+        if std::io::stdin().read_line(&mut line).is_err() {
+            break;
+        }
+        let line = line.trim().to_string();
+        if line == "/exit" || line == "/quit" || line == "q" || line == "exit" {
+            break;
+        }
+        if line.is_empty() {
+            continue;
+        }
+        // 文本 → token ids（合成模型 vocab 64——id 取模钳制；真实模型接入后无需钳制）
+        let ids: Vec<usize> = tok.encode(&line).iter().map(|&t| t % 64).collect();
+        print!("\nAssistant: ");
+        let _ = std::io::stdout().flush();
+        let gen = m.generate_sampled(&ids, 16, 0.9, 0, 0.9, 1.0);
+        println!("{}", tok.decode(&gen));
+    }
+    println!();
 }

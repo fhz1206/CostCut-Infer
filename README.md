@@ -1,7 +1,5 @@
-# CostCut Infer
-
 <p align="center">
-  <img src="docs/source/logos/CostCut-Infer-logo.png" alt="CostCut Infer" width="320"/>
+  <img src="https://raw.gitcode.com/fhz1206/CostCut-Infer/raw/main/CostCut-Infer-logo.png" alt="CostCut Infer" width="320"/>
 </p>
 
 > CPU-only MoE 大模型推理运行时（Python + Rust 双版本，均处于支持维护状态）
@@ -19,7 +17,10 @@ CostCut Infer 提供**两个独立版本**，定位互补、并行维护：
 
 > **重要**：Rust 版并非纯性能优先——**新功能会优先在 Python 版实现**（扩展性与验证更快），
 > 稳定后按需同步到 Rust 版做性能优化。Rust 版定位为**既有功能的性能优化路径**，
-> 而非新功能的首发版本；两版同步状态见 `docs/Python到Rust同步清单.md`。
+> 而非新功能的首发版本；两版同步状态见 `docs/rust/Python到Rust同步清单.md`。
+>
+> **发布策略**：**发布包永远为 Rust 版**（`build.sh` 自动化构建 → `costcut-infer.exe`）；
+> **Python 版仅作为技术探索用**（新功能验证/实验），不参与发布。
 
 ## 特性
 
@@ -49,7 +50,7 @@ CostCut Infer/
     src/                 tensor / safetensors / dequant / norm / rope / attention /
                          moe / layer / model / model_config / cache / sampling
   models/            模型权重（Qwen3.6-35B-A3B-AWQ-4bit、speculator.dspark 等）
-  docs/              文档（性能分析报告 / 性能优化方案 / 推理代码与vLLM差异报告）
+  docs/              文档（total/ 双版共有 / python/ / rust/ —— 分版本归类）
 ```
 
 ## 快速开始
@@ -90,9 +91,9 @@ cargo test --offline                     # 单元测试（29 项）
 
 ## 性能参考
 
-- 实测数据与两版对比详见 `docs/性能分析报告.md`
-- 优化方案与已实施项详见 `docs/性能优化方案.md`
-- 推理代码与 vLLM 差异分析详见 `docs/推理代码与vLLM差异报告.md`
+- 实测数据与两版对比详见 `docs/total/性能分析报告.md`
+- 未来性能开发方向与已实施项详见 `docs/total/未来性能开发方向报告.md`
+- 推理代码与 vLLM 差异分析详见 `docs/total/推理代码与vLLM差异报告.md`
 
 ## 测试
 

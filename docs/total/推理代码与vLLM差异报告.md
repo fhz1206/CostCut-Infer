@@ -26,7 +26,7 @@
 
 | 维度 | vLLM | CostCut Infer | 差异本质 |
 |---|---|---|---|
-| **多模态** | 完整多模态测试（generation / pooling / processing——vision/audio 推理） | vision 注册点占位（0 实现——方案见 docs/多模态适配方案.md） | **大差异**：vLLM 的视觉/音频端到端 vs 本项目的可扩展占位（缺依赖/模型） |
+| **多模态** | 完整多模态测试（generation / pooling / processing——vision/audio 推理） | vision 注册点占位（0 实现——方案见 docs/python/多模态适配方案.md） | **大差异**：vLLM 的视觉/音频端到端 vs 本项目的可扩展占位（缺依赖/模型） |
 | **长上下文** | PagedAttention（GPU KV 分页——长上下文内存高效） | KV 预分配（CPU——4096-token decode **2.12 s/token**——注意力 O(ctx) 主导） | vLLM 的分页消除碎片；CPU 的注意力 O(ctx) 为固有 |
 | **不同精度计算** | fp8/bf16 计算 + 多量化（fp8/fp4 等） | fp32 统一计算 + compute_dtype 可选；不同精度加载 ✓（torch_dtype/fp16 保留/FP8 缩放）；**计算内核未做** | 本项目的计算内核为后续（E 方向） |
 | **多架构广度** | deepseek_v32 / deepseek_v4_mega_moe / kimi_k3（MLA+EAGLE-3）等专属实现 | 配置归一化 + 通用回退（MoE 系列；V4-Flash/DSA 索引器字段解析未实现） | 本项目的 MoE 适配广度受限（Dense 不做 + 索引器未实现） |
@@ -47,7 +47,7 @@
 | 项 | 理由 |
 |---|---|
 | PagedAttention / flash-attn / MoE kernel | GPU CUDA 内核——CPU 无对应（eager + BLAS 为 CPU 基线） |
-| 多模态端到端推理 | 本项目缺视觉依赖/模型（CPU-only 评估见 docs/多模态适配方案.md） |
+| 多模态端到端推理 | 本项目缺视觉依赖/模型（CPU-only 评估见 docs/python/多模态适配方案.md） |
 | EAGLE-3 投机（kimi_k3） | CUDA 投机——CPU 的 dspark 实测慢（开关化） |
 | 连续批处理 / 多卡 | 单机本地推理定位——不适用 |
 | torch.compile / Inductor | 本机无 MSVC——不可用 |
@@ -56,4 +56,4 @@
 
 vLLM 与 CostCut Infer 的差异本质是**硬件环境（GPU vs CPU）与定位（生产级全模型 vs CPU MoE 双版本）**。
 已对齐项（KV 预分配/算子融合）带来 40 层 ~42% 提速；实测回退项（专家并行/int4 融合/AVX2/分块）均开关化或记录。
-剩余差距的 CPU 杠杆：int4/FP8 SIMD 打包内核（A 方向）与 Rust BLAS/真实模型接入（B/C 方向）——详见 docs/未来性能开发方向报告.md。
+剩余差距的 CPU 杠杆：int4/FP8 SIMD 打包内核（A 方向）与 Rust BLAS/真实模型接入（B/C 方向）——详见 docs/total/未来性能开发方向报告.md。

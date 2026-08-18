@@ -4,7 +4,7 @@
 //! 外部可通过 `register_attention` 注册新的注意力实现（可扩展性对齐 Python 版）。
 
 use crate::core::tensor::Tensor;
-use crate::engine::attention::{FullAttention, MlaAttention, StandardAttention};
+use crate::engine::attention::{FullAttention, GatedDeltaNet, MlaAttention, StandardAttention};
 use crate::io::safetensors::SafeTensors;
 use std::collections::HashMap;
 
@@ -60,6 +60,27 @@ impl Attention for MlaAttention {
     fn decode(&self, x: &Tensor, cos: &Tensor, sin: &Tensor,
               k_prev: &Tensor, v_prev: &Tensor) -> (Tensor, Tensor, Tensor) {
         self.decode(x, cos, sin, k_prev, v_prev)
+    }
+}
+
+impl Attention for GatedDeltaNet {
+    fn forward(&self, x: &Tensor, _cos: &Tensor, _sin: &Tensor,
+               _mask: Option<&Tensor>) -> Tensor {
+        self.forward(x)
+    }
+    fn forward_kv(&self, x: &Tensor, _cos: &Tensor, _sin: &Tensor,
+                  _mask: Option<&Tensor>) -> (Tensor, Tensor, Tensor) {
+        // 线性注意力无标准 KV——返回 (输出, 空 k/v)
+        let out = self.forward(x);
+        let empty = Tensor::from_vec(0, 0, vec![]);
+        (out, empty.clone(), empty)
+    }
+    fn decode(&self, _x: &Tensor, _cos: &Tensor, _sin: &Tensor,
+              _k_prev: &Tensor, _v_prev: &Tensor) -> (Tensor, Tensor, Tensor) {
+        // 线性注意力的 decode 走 forward_step（conv/rec 状态）——此处为 trait 兼容占位
+        let out = Tensor::from_vec(1, self.hidden, vec![0.0; self.hidden]);
+        let empty = Tensor::from_vec(0, 0, vec![]);
+        (out, empty.clone(), empty)
     }
 }
 

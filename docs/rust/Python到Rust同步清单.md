@@ -25,7 +25,7 @@
 | P1 | compute_dtype 配置 | Rust 反量化输出 dtype 参数（fp32 默认/fp16） | ⚠️ **已评估**：Rust 张量为 f32-only——fp16 输出需 fp16 张量类型/计算内核（归入 P2 不同精度计算）；Python 侧 compute_dtype 已配置化 |
 | P1 | KV 预分配（kv_append） | 预分配 + 位置索引（owned-tensor 收益有限——评估后定） | ⚠️ **已评估**：Rust owned-tensor 切片即拷贝——预分配收益有限——**保持 concat_rows**（与 Python 的对齐结论一致） |
 | P2 | 不同精度计算（fp16/bf16 原生） | 内核级 fp16 matmul（当前 f32 统一） | 视硬件 |
-| P2 | 多模态（vision 注册点） | vision 编码器 trait（依赖/模型就绪后） | 见 docs/多模态适配方案.md |
+| P2 | 多模态（vision 注册点） | vision 编码器 trait（依赖/模型就绪后） | 见 docs/python/多模态适配方案.md |
 
 ## 3. 已评估不做同步（理由）
 

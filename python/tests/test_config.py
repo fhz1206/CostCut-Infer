@@ -10,7 +10,7 @@ import unittest
 from liteengine.config import EngineConfig
 from liteengine.model_config import load_model_config
 
-MODEL_DIR = "models/Qwen3.6-35B-A3B-AWQ-4bit"
+MODEL_DIR = "models/Qwen3.6-35B-A3B-AWQ-4bit"   # engine.toml 原始路径（脚本相对——cli_chat 解析到 python/models）
 
 
 class TestEngineConfig(unittest.TestCase):
@@ -25,7 +25,7 @@ class TestEngineConfig(unittest.TestCase):
         self.assertEqual(m.model_dir, MODEL_DIR)
         self.assertEqual(m.expert_cache_max, 128)
         self.assertEqual(m.dspark_model, "Qwen3.6-35B-A3B-speculator.dspark")
-        self.assertEqual(m.dspark_model_dir, "models/Qwen3.6-35B-A3B-speculator.dspark")
+        self.assertEqual(m.dspark_model_dir, "python/models/Qwen3.6-35B-A3B-speculator.dspark")
         self.assertEqual(c.models["Router"].model_dir, "models/Router")   # path 默认补全
         self.assertEqual(c.inference.top_k, 0)
         self.assertEqual(c.inference.repetition_penalty, 1.0)   # engine.toml 当前为 1（不干预）

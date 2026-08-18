@@ -16,7 +16,7 @@ from liteengine.loader import WeightStore
 from liteengine.model import Qwen3_5MoeModel, load_text_config
 from liteengine.sampling import sample_token
 
-MODEL_DIR = "models/Qwen3.6-35B-A3B-AWQ-4bit"
+MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
 N_LAYERS = 5        # 覆盖 3×linear_attention + 1×full_attention + 1×linear
 VOCAB = 248320
 
@@ -123,7 +123,7 @@ class TestSpeculativeDecode(unittest.TestCase):
         cls.store = WeightStore(MODEL_DIR)
         cls.model = Qwen3_5MoeModel(cls.store, load_text_config(MODEL_DIR))
         from liteengine.speculator import DSparkSpeculator
-        cls.spec = DSparkSpeculator("models/Qwen3.6-35B-A3B-speculator.dspark")
+        cls.spec = DSparkSpeculator("python/models/Qwen3.6-35B-A3B-speculator.dspark")
 
     def test_greedy_equivalence(self):
         torch.manual_seed(0)

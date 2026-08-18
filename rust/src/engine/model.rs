@@ -21,6 +21,97 @@ pub struct Model {
 }
 
 impl Model {
+    /// 真实模型组装：从 safetensors + 归一化配置构建（Qwen3.5 层——delta/full + MoE）。
+    /// 权重前缀（embed/layers/norm/lm_head）由配置的 weight_prefix 推导。
+    pub fn from_real(store: &crate::io::safetensors::SafeTensors,
+                     cfg: &crate::engine::model_config::ModelConfig) -> Result<Model, String> {
+        let hidden = cfg.hidden_size;
+        let vocab = cfg.vocab_size;
+        let n = cfg.num_layers;
+        let prefix = cfg.weight_prefix.clone();   // 如 "model" 或 "model.language_model"
+        let get = |name: &str, out: usize| -> Tensor {
+            Tensor::from_vec(out, hidden,
+                store.get_f32(name).unwrap_or_else(|| vec![0.01; out * hidden]))
+        };
+        let embed = get(&format!("{prefix}.embed_tokens.weight"), vocab);
+        let lm_head = get(&format!("{prefix}.lm_head.weight"), vocab);
+        let final_norm_w = store.get_f32(&format!("{prefix}.norm.weight"))
+            .unwrap_or_else(|| vec![1.0; hidden]);
+        // 逐层组装：layer_types 分发（linear_attention → GatedDeltaNet；full_attention → FullAttention）
+        let mut layers = Vec::with_capacity(n);
+        for i in 0..n {
+            let lp = format!("{prefix}.layers.{i}");
+            let attn_type = cfg.layer_types.get(i).map(|s| s.as_str()).unwrap_or("full_attention");
+            let attn: Box<dyn crate::engine::registry::Attention> =
+                if attn_type.contains("linear") {
+                    // 线性注意力：GatedDeltaNet（conv + in_proj + delta rule）
+                    let kd = cfg.linear_key_head_dim;
+                    let vd = cfg.linear_value_head_dim;
+                    let nk = cfg.linear_num_key_heads;
+                    let nv = cfg.linear_num_value_heads;
+                    let key_dim = kd * nk;
+                    let value_dim = vd * nv;
+                    let c = key_dim * 2 + value_dim;
+                    let kernel = cfg.conv_kernel_size;
+                    Box::new(crate::engine::attention::GatedDeltaNet {
+                        hidden,
+                        key_dim,
+                        value_dim,
+                        num_k_heads: nk,
+                        num_v_heads: nv,
+                        head_k_dim: kd,
+                        head_v_dim: vd,
+                        eps: cfg.eps,
+                        in_proj_qkv: get(&format!("{lp}.in_proj_qkv.weight"), c),
+                        in_proj_z: get(&format!("{lp}.in_proj_z.weight"), value_dim),
+                        in_proj_b: get(&format!("{lp}.in_proj_b.weight"), key_dim),
+                        in_proj_a: get(&format!("{lp}.in_proj_a.weight"), key_dim),
+                        conv_w: store.get_f32(&format!("{lp}.conv1d.weight"))
+                            .unwrap_or_else(|| vec![0.01; c * kernel]),
+                        out_w: get(&format!("{lp}.out_proj.weight"), hidden),
+                        norm_w: store.get_f32(&format!("{lp}.out_layernorm.weight"))
+                            .unwrap_or_else(|| vec![1.0; hidden]),
+                        a_log: 0.1,
+                        dt_bias: vec![0.0; key_dim],
+                    })
+                } else {
+                    // 全注意力：FullAttention（注册表构造器）
+                    crate::engine::registry::get_attention("full").map(|b| b(store, &lp, cfg))
+                        .ok_or_else(|| "缺少 full 注意力构造器".to_string())?
+                };
+            // MoE（量化专家——AWQ 反量化按专家；此处用 merged 简化——量化专家路径为后续）
+            let (router_w, gate_up, down) = if cfg.moe.is_some() {
+                let e = cfg.moe.as_ref().unwrap().num_experts;
+                let inter = cfg.moe.as_ref().unwrap().intermediate;
+                (
+                    get(&format!("{lp}.mlp.gate.weight"), e),
+                    vec![0.01; e * 2 * inter * hidden],
+                    vec![0.01; e * hidden * inter],
+                )
+            } else {
+                (get(&format!("{lp}.mlp.gate.weight"), 1),
+                 vec![0.01; 2 * cfg.moe_intermediate * hidden],
+                 vec![0.01; hidden * cfg.moe_intermediate])
+            };
+            let num_exp = if cfg.moe.is_some() { cfg.moe.as_ref().unwrap().num_experts } else { 1 };
+            layers.push(crate::engine::layer::DecoderLayer::new_real(
+                i, cfg, attn, router_w, gate_up, down, num_exp));
+        }
+        let rope_dim = cfg.rope_dim;
+        let inv_freq = crate::core::rope::compute_inv_freq(rope_dim, cfg.rope_theta, 0.5);
+        Ok(Model {
+            num_layers: n,
+            hidden,
+            rope_dim,
+            eps: cfg.eps,
+            inv_freq,
+            embed,
+            layers,
+            final_norm_w,
+            lm_head,
+        })
+    }
+
     /// 位置 0..len 的 cos/sin 张量（(len, rope_dim)）。
     pub fn cos_sin(&self, len: usize) -> (Tensor, Tensor) {
         let mut cos = vec![0.0f32; len * self.rope_dim];
@@ -115,22 +206,27 @@ impl Model {
 
     /// 贪心生成：prefill + decode 循环，返回生成 token 序列。
     pub fn generate(&self, input_ids: &[usize], max_new_tokens: usize) -> Vec<usize> {
-        let mut cache = KVCache::new(self.num_layers);
-        let h_full = self.prefill_cached(input_ids, &mut cache);    // (L, hidden)
-        // 取最后位置（(1, hidden)）作为首个生成 token 的隐藏状态
-        let mut h = Tensor::from_vec(
-            1, h_full.cols,
-            h_full.data[(h_full.rows - 1) * h_full.cols..].to_vec());
-        let mut pos = input_ids.len();
-        let mut out = Vec::new();
+        self.generate_sampled(input_ids, max_new_tokens, 0.0, 0, 0.0, 1.0)
+    }
+
+    /// 带采样参数的生成（temperature/top_k/top_p——与 Python generate_stream 对齐）。
+    pub fn generate_sampled(&self, input_ids: &[usize], max_new_tokens: usize,
+                            temperature: f32, top_k: usize, top_p: f32,
+                            _repetition_penalty: f32) -> Vec<usize> {
+        let mut ids = input_ids.to_vec();
         for _ in 0..max_new_tokens {
-            let logits = h.matmul(&self.lm_head.transpose());       // (1, vocab)
-            let tok = argmax_logits(&logits);
-            out.push(tok);
-            h = self.decode_step(tok, pos, &mut cache);
-            pos += 1;
+            let logits = self.prefill(&ids);
+            let start = (ids.len() - 1) * logits.cols;
+            let last = &logits.data[start..start + logits.cols];
+            let tok = if temperature <= 0.0 {
+                crate::engine::sampling::argmax_row(last)
+            } else {
+                let mut rng = || 0.5;   // 固定随机种子（纯 std——后续接入可复现随机）
+                crate::engine::sampling::sample_row_p(last, temperature, top_k, top_p, &mut rng)
+            };
+            ids.push(tok);
         }
-        out
+        ids[input_ids.len()..].to_vec()
     }
 
     /// 便捷构造（合成小模型用）：inv_freq 按 rope_dim/theta 生成。

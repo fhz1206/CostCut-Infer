@@ -30,7 +30,7 @@ from liteengine.norm import rms_norm, rms_norm_gated
 from liteengine.quant import dequantize_awq
 from liteengine.rope import apply_rotary_pos_emb, compute_inv_freq, rotary_embeddings
 
-MODEL_DIR = "models/Qwen3.6-35B-A3B-AWQ-4bit"
+MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
 
 
 class TestNorm(unittest.TestCase):

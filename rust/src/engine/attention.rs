@@ -397,6 +397,134 @@ pub fn chunk_delta_rule(q: &Tensor, k: &Tensor, v: &Tensor, g: &Tensor, beta: &T
 }
 /// q/k/v 经低秩投影压缩（q_a→q_b / kv_a→kv_b），RoPE 仅用于解耦的 rope 部分，
 /// 注意力分数 = q_nope@k_nope + q_rope@k_rope。
+/// 线性层（向量）：out = x @ w^T（x (1, hidden) → out (out_dim)）。
+fn linear_vec(x: &Tensor, w: &Tensor, out_dim: usize) -> Vec<f32> {
+    let mut out = vec![0.0f32; out_dim];
+    for i in 0..out_dim {
+        let mut acc = 0.0f32;
+        for k in 0..x.cols {
+            acc += x.get(0, k) * w.get(i, k);
+        }
+        out[i] = acc;
+    }
+    out
+}
+
+/// GatedDeltaNet：Qwen3.5 的线性注意力层（conv1d + in_proj + delta rule + gated norm）。
+///
+/// decode（forward_step）：causal conv1d 续接 + q/k/v/z/b/a 投影 → beta/g → recurrent
+/// delta rule → 输出乘 silu(z)（gated norm）→ out_proj。
+/// 注：prefill（forward）当前走逐 token recurrent（与 chunk 数学等价——chunk 加速为后续）。
+pub struct GatedDeltaNet {
+    pub hidden: usize,
+    pub key_dim: usize,
+    pub value_dim: usize,
+    pub num_k_heads: usize,
+    pub num_v_heads: usize,
+    pub head_k_dim: usize,
+    pub head_v_dim: usize,
+    pub eps: f32,
+    pub in_proj_qkv: Tensor,   // (key_dim*2+value_dim, hidden)
+    pub in_proj_z: Tensor,
+    pub in_proj_b: Tensor,
+    pub in_proj_a: Tensor,
+    pub conv_w: Vec<f32>,      // (C, kernel)
+    pub out_w: Tensor,
+    pub norm_w: Vec<f32>,
+    pub a_log: f32,
+    pub dt_bias: Vec<f32>,
+}
+
+impl GatedDeltaNet {
+    /// decode 单步：x (1, hidden)；conv_state 续接；rec_state (h_k*kd*vd)。
+    pub fn forward_step(&self, x: &Tensor, conv_state: Option<&[f32]>,
+                        rec_state: Option<&[f32]>) -> (Tensor, Vec<f32>, Vec<f32>) {
+        let c = self.key_dim * 2 + self.value_dim;
+        let kernel = self.conv_w.len() / c;
+        // 因果 conv1d（single token：kernel 个窗口，不足补零）
+        let have = kernel - 1;
+        let mut conv_in = vec![0.0f32; c * kernel];
+        if let Some(st) = conv_state {
+            for t in 0..have {
+                for ch in 0..c {
+                    conv_in[t * c + ch] = st[t * c + ch];
+                }
+            }
+        }
+        let qkv_pre = linear_vec(x, &self.in_proj_qkv, c);   // (c)
+        for ch in 0..c {
+            conv_in[(kernel - 1) * c + ch] = qkv_pre[ch];
+        }
+        // conv1d + silu
+        let mut qkv = vec![0.0f32; c];
+        for ch in 0..c {
+            let mut acc = 0.0f32;
+            for kk in 0..kernel {
+                acc += conv_in[kk * c + ch] * self.conv_w[ch * kernel + kk];
+            }
+            qkv[ch] = acc / (1.0 + (-acc).exp());
+        }
+        // 新 conv 状态 = pre-conv 序列末尾 kernel-1 个值（滑动窗口）
+        let mut new_conv = vec![0.0f32; have * c];
+        for t in 0..have {
+            let idx = if t < have { (have - 1 - t) * c } else { 0 };
+            for ch in 0..c {
+                new_conv[t * c + ch] = conv_in[idx + ch];
+            }
+        }
+        // 拆分 q/k/v
+        let kd = self.key_dim / self.num_k_heads;
+        let vd = self.value_dim / self.num_v_heads;
+        let (mut q, mut k, mut v) = (vec![0.0f32; self.key_dim], vec![0.0f32; self.key_dim],
+                                     vec![0.0f32; self.value_dim]);
+        for i in 0..self.key_dim { q[i] = qkv[i]; k[i] = qkv[self.key_dim + i]; }
+        for i in 0..self.value_dim { v[i] = qkv[self.key_dim * 2 + i]; }
+        // z/b/a → beta/g
+        let z = linear_vec(x, &self.in_proj_z, self.value_dim);
+        let b = linear_vec(x, &self.in_proj_b, self.key_dim);
+        let a = linear_vec(x, &self.in_proj_a, self.key_dim);
+        let mut beta = vec![0.0f32; self.key_dim];
+        let mut g = vec![0.0f32; self.key_dim];
+        for i in 0..self.key_dim {
+            beta[i] = 1.0 / (1.0 + (-b[i]).exp());
+            let sp = (a[i] + self.dt_bias[i]).max(0.0).ln_1p();
+            g[i] = -self.a_log.exp() * sp;
+        }
+        // recurrent delta rule（每头）
+        let qt = Tensor::from_vec(1, self.key_dim, q);
+        let kt = Tensor::from_vec(1, self.key_dim, k);
+        let vt = Tensor::from_vec(1, self.value_dim, v);
+        let gt = Tensor::from_vec(1, self.key_dim, g);
+        let bt = Tensor::from_vec(1, self.key_dim, beta);
+        let (core, new_rec) = recurrent_delta_rule(
+            &qt, &kt, &vt, &gt, &bt, rec_state, self.num_k_heads, kd, vd);
+        // gated norm：core * silu(z) → out_proj
+        let mut gated = vec![0.0f32; self.value_dim];
+        for i in 0..self.value_dim {
+            gated[i] = core.get(0, i) * (z[i] / (1.0 + (-z[i]).exp()));
+        }
+        let out = linear_vec(&Tensor::from_vec(1, self.value_dim, gated), &self.out_w, self.hidden);
+        (Tensor::from_vec(1, self.hidden, out), new_conv, new_rec)
+    }
+
+    /// prefill：逐 token recurrent（与 chunk 数学等价；chunk 加速为后续）。
+    pub fn forward(&self, x: &Tensor) -> Tensor {
+        let l = x.rows;
+        let mut conv: Option<Vec<f32>> = None;
+        let mut rec: Option<Vec<f32>> = None;
+        let mut outs = vec![0.0f32; l * self.hidden];
+        for t in 0..l {
+            let xt = Tensor::from_vec(1, self.hidden,
+                (0..self.hidden).map(|d| x.get(t, d)).collect());
+            let (o, nc, nr) = self.forward_step(&xt, conv.as_deref(), rec.as_deref());
+            conv = Some(nc);
+            rec = Some(nr);
+            for d in 0..self.hidden { outs[t * self.hidden + d] = o.get(0, d); }
+        }
+        Tensor::from_vec(l, self.hidden, outs)
+    }
+}
+
 pub struct MlaAttention {
     pub num_heads: usize,
     pub kv_lora_rank: usize,

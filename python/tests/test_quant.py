@@ -17,7 +17,7 @@ from liteengine.loader import WeightStore
 from liteengine.quant import (QuantConfig, _unpack_colwise, _unpack_int4_colwise,
                               dequantize, dequantize_awq)
 
-MODEL_DIR = "models/Qwen3.6-35B-A3B-AWQ-4bit"
+MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
 
 
 def naive_unpack(packed):

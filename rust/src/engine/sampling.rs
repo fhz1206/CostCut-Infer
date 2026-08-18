@@ -29,6 +29,63 @@ pub fn sample_row(data: &[f32], temperature: f32, rng: &mut impl FnMut() -> f32)
     probs.len() - 1
 }
 
+/// 采样：温度 + top_k + top_p（top_k=0 不限；top_p 核采样阈值——纯 std，调用方提供 RNG）。
+pub fn sample_row_p(data: &[f32], temperature: f32, top_k: usize, top_p: f32,
+                    rng: &mut impl FnMut() -> f32) -> usize {
+    let max = data.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+    let mut probs: Vec<f32> = data.iter().map(|v| ((v - max) / temperature).exp()).collect();
+    let sum: f32 = probs.iter().sum();
+    for p in probs.iter_mut() {
+        *p /= sum;
+    }
+    if top_k > 0 && top_k < probs.len() {
+        let mut idx: Vec<usize> = (0..probs.len()).collect();
+        idx.sort_by(|&a, &b| probs[b].partial_cmp(&probs[a]).unwrap());
+        let keep: std::collections::HashSet<usize> = idx[..top_k].iter().copied().collect();
+        for (i, p) in probs.iter_mut().enumerate() {
+            if !keep.contains(&i) {
+                *p = 0.0;
+            }
+        }
+        let s: f32 = probs.iter().sum();
+        for p in probs.iter_mut() {
+            *p /= s;
+        }
+    }
+    if top_p > 0.0 && top_p < 1.0 {
+        let mut idx: Vec<usize> = (0..probs.len()).collect();
+        idx.sort_by(|&a, &b| probs[b].partial_cmp(&probs[a]).unwrap());
+        let mut acc = 0.0f32;
+        let mut cutoff = probs.len();
+        for (n, &i) in idx.iter().enumerate() {
+            acc += probs[i];
+            if acc >= top_p {
+                cutoff = n + 1;
+                break;
+            }
+        }
+        let keep: std::collections::HashSet<usize> = idx[..cutoff].iter().copied().collect();
+        for (i, p) in probs.iter_mut().enumerate() {
+            if !keep.contains(&i) {
+                *p = 0.0;
+            }
+        }
+        let s: f32 = probs.iter().sum();
+        for p in probs.iter_mut() {
+            *p /= s;
+        }
+    }
+    let r = rng();
+    let mut acc = 0.0f32;
+    for (i, p) in probs.iter().enumerate() {
+        acc += p;
+        if r <= acc {
+            return i;
+        }
+    }
+    probs.len() - 1
+}
+
 /// 便捷包装：对 (1, vocab) 张量取 argmax。
 pub fn argmax_logits(logits: &Tensor) -> usize {
     assert_eq!(logits.rows, 1);

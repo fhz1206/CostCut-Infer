@@ -20,6 +20,17 @@ pub struct ModelConfig {
     pub rope_theta: f32,
     pub attention: String,       // "standard" | "mla" | "full_gated" | "linear_delta"
     pub moe: Option<MoeConfig>,  // None = 稠密 MLP（dense_mlp 路径）
+    // 真实模型组装所需（Qwen3.5）
+    pub vocab_size: usize,
+    pub weight_prefix: String,
+    pub layer_types: Vec<String>,
+    pub linear_key_head_dim: usize,
+    pub linear_value_head_dim: usize,
+    pub linear_num_key_heads: usize,
+    pub linear_num_value_heads: usize,
+    pub conv_kernel_size: usize,
+    pub rope_dim: usize,
+    pub moe_intermediate: usize,
 }
 
 /// MoE 规格。
@@ -93,6 +104,16 @@ pub fn load_model_config(model_dir: &str) -> Result<ModelConfig, String> {
     Ok(ModelConfig {
         arch, hidden_size: hidden, num_layers: n_layers, num_heads: heads,
         num_kv_heads: kvh, head_dim, eps, rope_theta, attention, moe,
+        vocab_size: num(&fields, "vocab_size", 0),
+        weight_prefix: "model.language_model".to_string(),
+        layer_types: vec![],                     // 由 raw 解析（简化——Qwen3.5 默认全 full）
+        linear_key_head_dim: num(&fields, "linear_key_head_dim", 64),
+        linear_value_head_dim: num(&fields, "linear_value_head_dim", 64),
+        linear_num_key_heads: num(&fields, "linear_num_key_heads", 1),
+        linear_num_value_heads: num(&fields, "linear_num_value_heads", 1),
+        conv_kernel_size: num(&fields, "conv_kernel_size", 4),
+        rope_dim: num(&fields, "rope_dim", head_dim),
+        moe_intermediate: num(&fields, "moe_intermediate_size", 4 * hidden),
     })
 }
 

@@ -50,7 +50,7 @@ class ModelConfig:
         v = self.dspark_model.strip()
         if Path(v).is_dir():
             return v
-        return f"models/{v}"
+        return f"python/models/{v}"
 
 
 @dataclass

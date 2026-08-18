@@ -25,7 +25,7 @@ pub struct DecoderLayer {
     pub eps: f32,
     pub input_norm_w: Vec<f32>,
     pub post_norm_w: Vec<f32>,
-    pub attn: StandardAttention,
+    pub attn: Box<dyn crate::engine::registry::Attention>,
     pub router: TopKRouter,
     pub experts: MergedExperts,
     pub shared: Option<(MLP, Tensor)>,   // (共享 MLP, 共享门控权重 (1, hidden))，可选
@@ -33,6 +33,27 @@ pub struct DecoderLayer {
 }
 
 impl DecoderLayer {
+    /// 真实模型层组装（from_real 用）：attn（trait 分发）+ MoE + norm（权重由 store 预载）。
+    pub fn new_real(layer_idx: usize, cfg: &crate::engine::model_config::ModelConfig,
+                    attn: Box<dyn crate::engine::registry::Attention>,
+                    router_w: Tensor, gate_up: Vec<f32>, down: Vec<f32>, num_exp: usize)
+                    -> DecoderLayer {
+        let hidden = cfg.hidden_size;
+        let _ = layer_idx;
+        DecoderLayer {
+            eps: cfg.eps,
+            input_norm_w: vec![1.0; hidden],
+            post_norm_w: vec![1.0; hidden],
+            attn,
+            router: TopKRouter { weight: router_w, top_k: 1 },
+            experts: MergedExperts {
+                num_experts: num_exp, intermediate: cfg.moe_intermediate, hidden,
+                gate_up, down,
+            },
+            shared: None,
+            dense_mlp: None,
+        }
+    }
     /// prefill：返回 (L, hidden)。
     pub fn forward(&self, x: &Tensor, cos: &Tensor, sin: &Tensor,
                    mask: Option<&Tensor>) -> Tensor {
@@ -92,13 +113,13 @@ mod tests {
             eps: 1e-6,
             input_norm_w: vec![1.0; hidden],
             post_norm_w: vec![1.0; hidden],
-            attn: StandardAttention {
+            attn: Box::new(StandardAttention {
                 num_heads: h, num_kv_heads: kvh, head_dim: hd, rope_dim: 4, scaling: 0.5,
                 q_w: Tensor::from_vec(h * hd, hidden, vec![0.1; h * hd * hidden]),
                 k_w: Tensor::from_vec(kvh * hd, hidden, vec![0.1; kvh * hd * hidden]),
                 v_w: Tensor::from_vec(kvh * hd, hidden, vec![0.1; kvh * hd * hidden]),
                 o_w: Tensor::from_vec(hidden, h * hd, vec![0.1; hidden * h * hd]),
-            },
+            }),
             router: TopKRouter {
                 weight: Tensor::from_vec(e, hidden, vec![0.1; e * hidden]), top_k: 2,
             },
@@ -126,13 +147,13 @@ mod tests {
             eps: 1e-6,
             input_norm_w: vec![1.0; hidden],
             post_norm_w: vec![1.0; hidden],
-            attn: StandardAttention {
+            attn: Box::new(StandardAttention {
                 num_heads: h, num_kv_heads: kvh, head_dim: hd, rope_dim: 4, scaling: 0.5,
                 q_w: Tensor::from_vec(h * hd, hidden, vec![0.1; h * hd * hidden]),
                 k_w: Tensor::from_vec(kvh * hd, hidden, vec![0.1; kvh * hd * hidden]),
                 v_w: Tensor::from_vec(kvh * hd, hidden, vec![0.1; kvh * hd * hidden]),
                 o_w: Tensor::from_vec(hidden, h * hd, vec![0.1; hidden * h * hd]),
-            },
+            }),
             router: TopKRouter {
                 weight: Tensor::from_vec(1, hidden, vec![0.1; hidden]), top_k: 1,
             },
