@@ -114,17 +114,26 @@ impl MarkovSpeculator {
 
     /// 投机生成：草稿 n 个 → 主模型验证 → 接受连续匹配前缀（贪心 argmax 语义，镜像
     /// Python 的 speculative_accept）。无草稿时回退标准生成；每次生成后 observe 学习。
+    /// 投机生成（镜像 Python speculative_accept——temperature<=0 贪心接受；>0 投机采样接受：
+    /// r < min(1, p_main/p_draft) 接受，拒绝时从主模型分布重采样，全接受时额外采样一个）。
     pub fn generate_speculative(&mut self, m: &crate::engine::model::Model,
-                                input: &[usize], n_draft: usize, max_new: usize) -> Vec<usize> {
+                                input: &[usize], n_draft: usize, max_new: usize,
+                                temperature: f32, top_k: usize, top_p: f32) -> Vec<usize> {
         let mut ids = input.to_vec();
         let mut out = Vec::new();
+        let greedy = temperature <= 0.0;
         while out.len() < max_new {
             let draft_ids = self.draft(&ids, n_draft);
             if draft_ids.is_empty() {
                 let logits = m.prefill(&ids);
                 let start = (ids.len() - 1) * logits.cols;
-                let tok = crate::engine::sampling::argmax_row(
-                    &logits.data[start..start + logits.cols]);
+                let last = &logits.data[start..start + logits.cols];
+                let tok = if greedy {
+                    crate::engine::sampling::argmax_row(last)
+                } else {
+                    let mut rng = || 0.5;
+                    crate::engine::sampling::sample_row_p(last, temperature, top_k, top_p, &mut rng)
+                };
                 ids.push(tok);
                 out.push(tok);
                 self.observe(&ids);
@@ -138,18 +147,41 @@ impl MarkovSpeculator {
             for (k, &d) in draft_ids.iter().enumerate() {
                 let pos = ids.len() + k;
                 let start = (pos - 1) * logits.cols;
-                let tok = crate::engine::sampling::argmax_row(
-                    &logits.data[start..start + logits.cols]);
-                if tok == d {
+                let row = &logits.data[start..start + logits.cols];
+                let ok = if greedy {
+                    crate::engine::sampling::argmax_row(row) == d
+                } else {
+                    // 投机采样接受：ok = r < min(1, p_main / p_draft)——p_draft 简化 1.0（贪心草稿）
+                    let p_main = softmax_val(row, temperature, d);
+                    let r = 0.5;   // 固定随机种子（纯 std）
+                    r < p_main.min(1.0)
+                };
+                if ok {
                     accepted += 1;
                 } else {
-                    correction = Some(tok);
+                    correction = Some(if greedy {
+                        crate::engine::sampling::argmax_row(row)
+                    } else {
+                        let mut rng = || 0.5;
+                        crate::engine::sampling::sample_row_p(row, temperature, top_k, top_p, &mut rng)
+                    });
                     break;
                 }
             }
             if accepted == draft_ids.len() {
                 ids.extend(&draft_ids);
                 out.extend(&draft_ids);
+                // 全接受：额外采样一个（草稿后最后位置的分布——镜像 Python extra_logits）
+                let last_start = (ids.len() - 1) * logits.cols;
+                let last = &logits.data[last_start..last_start + logits.cols];
+                let tok = if greedy {
+                    crate::engine::sampling::argmax_row(last)
+                } else {
+                    let mut rng = || 0.5;
+                    crate::engine::sampling::sample_row_p(last, temperature, top_k, top_p, &mut rng)
+                };
+                ids.push(tok);
+                out.push(tok);
             } else {
                 ids.extend(draft_ids[..accepted].iter());
                 out.extend(draft_ids[..accepted].iter());
@@ -161,6 +193,19 @@ impl MarkovSpeculator {
         }
         out
     }
+}
+
+/// softmax(logits / temperature) 在 idx 的概率（数值稳定——镜像 Python 的接受判定）。
+fn softmax_val(logits: &[f32], temperature: f32, idx: usize) -> f32 {
+    let max = logits.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+    let mut sum = 0.0f32;
+    for v in logits {
+        sum += ((v - max) / temperature).exp();
+    }
+    if sum <= 0.0 {
+        return 0.0;
+    }
+    ((logits[idx.min(logits.len() - 1)] - max) / temperature).exp() / sum
 }
 
 /// 真实 DSpark 草稿模型（镜像 Python DSparkSpeculator——5 层草稿 + markov_head + d2t）。

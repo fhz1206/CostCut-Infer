@@ -252,6 +252,125 @@ pub struct GgufConfig {
     pub experts_per_tok: usize,
 }
 
+/// GGUF 张量名 → HF 风格名（镜像 Python gguf_name_to_hf——None = 辅助张量）。
+pub fn gguf_name_to_hf(name: &str) -> Option<String> {
+    match name {
+        "token_embd.weight" => return Some("model.embed_tokens.weight".into()),
+        "output.weight" => return Some("lm_head.weight".into()),
+        "token_embd_norm.weight" | "output_norm.weight" => {
+            return Some("model.norm.weight".into());
+        }
+        _ => {}
+    }
+    if let Some(rest) = name.strip_prefix("blk.") {
+        let parts: Vec<&str> = rest.split('.').collect();
+        if parts.len() >= 2 {
+            let (layer, rest) = (parts[0], parts[1..].join("."));
+            let base = format!("model.layers.{layer}");
+            let table = [
+                ("attn_norm.weight", "input_layernorm.weight"),
+                ("attn_q.weight", "self_attn.q_proj.weight"),
+                ("attn_k.weight", "self_attn.k_proj.weight"),
+                ("attn_v.weight", "self_attn.v_proj.weight"),
+                ("attn_output.weight", "self_attn.o_proj.weight"),
+                ("ffn_norm.weight", "post_attention_layernorm.weight"),
+                ("ffn_gate.weight", "mlp.gate_proj.weight"),
+                ("ffn_up.weight", "mlp.up_proj.weight"),
+                ("ffn_down.weight", "mlp.down_proj.weight"),
+                ("ffn_gate_inp.weight", "mlp.gate.weight"),
+            ];
+            for (g, h) in table {
+                if rest == g {
+                    return Some(format!("{base}.{h}"));
+                }
+            }
+            // MoE 专家：ffn_exps.N.w1/w3 → gate_up（合并）；w2 → down
+            if rest.starts_with("ffn_exps.") && rest.ends_with(".weight") {
+                let ep: Vec<&str> = rest.split('.').collect();   // [ffn_exps, N, w1/w2/w3, weight]
+                if ep.len() == 4 {
+                    let (n, proj) = (ep[1], ep[2]);
+                    match proj {
+                        "w1" | "w3" => {
+                            return Some(format!("{base}.mlp.experts.{n}.gate_up_proj.weight"));
+                        }
+                        "w2" => {
+                            return Some(format!("{base}.mlp.experts.{n}.down_proj.weight"));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// GGUF 权重适配（镜像 Python GGUFWeightStore——HF 风格命名 → ggml 命名，惰性读取 + 缓存）。
+pub struct GgufWeightStore {
+    reader: GgufReader,
+    num_experts: usize,
+    cache: std::collections::HashMap<String, Option<Vec<f32>>>,
+}
+
+impl GgufWeightStore {
+    /// 打开 GGUF 并解析（num_experts 取自元数据——MoE 合并用）。
+    pub fn open(path: &str) -> Result<GgufWeightStore, String> {
+        let reader = GgufReader::open(path)?;
+        let num_experts = reader.metadata.get("general.expert_count")
+            .and_then(|s| s.parse().ok()).unwrap_or(0);
+        Ok(GgufWeightStore {
+            reader,
+            num_experts,
+            cache: std::collections::HashMap::new(),
+        })
+    }
+
+    /// 按 HF 名读取权重（惰性读取 + 缓存——None = 未命中）。
+    pub fn get(&mut self, name: &str) -> Option<Vec<f32>> {
+        if let Some(v) = self.cache.get(name) {
+            return v.clone();
+        }
+        let val = self.load(name);
+        self.cache.insert(name.to_string(), val.clone());
+        val
+    }
+
+    fn load(&self, name: &str) -> Option<Vec<f32>> {
+        // MoE 合并：mlp.experts.N.gate_up_proj.weight ← 各专家 w1（gate）+ w3（up）
+        let gate_up_parts: Vec<&str> = name.split('.').collect();
+        // 形如 model.layers.N.mlp.experts.M.gate_up_proj.weight
+        if gate_up_parts.len() >= 7
+            && gate_up_parts[gate_up_parts.len() - 2] == "gate_up_proj"
+            && gate_up_parts[gate_up_parts.len() - 4] == "experts"
+        {
+            let (layer, exp) = (gate_up_parts[2], gate_up_parts[5]);
+            let w1 = self.hf_get(&format!(
+                "model.layers.{layer}.mlp.experts.{exp}.gate_proj.weight"));
+            let w3 = self.hf_get(&format!(
+                "model.layers.{layer}.mlp.experts.{exp}.up_proj.weight"));
+            if let (Some(g), Some(u)) = (w1, w3) {
+                let mut merged = Vec::with_capacity(g.len() + u.len());
+                merged.extend_from_slice(&g);
+                merged.extend_from_slice(&u);
+                return Some(merged);
+            }
+            return None;
+        }
+        // 基础：HF 名 → GGUF 名（遍历张量——gguf_name_to_hf 匹配）
+        self.hf_get(name)
+    }
+
+    /// 按 HF 名读取（遍历 GGUF 张量——gguf_name_to_hf 匹配——None = 未命中）。
+    fn hf_get(&self, name: &str) -> Option<Vec<f32>> {
+        for t in &self.reader.tensors {
+            if gguf_name_to_hf(&t.name).as_deref() == Some(name) {
+                return self.reader.get_f32(&t.name);
+            }
+        }
+        None
+    }
+}
+
 /// Q4_0 反量化（ggml 公式）：每 32 值一块——f16 scale + 16 字节（低 4 位前 16 值，高 4 位后 16 值）。
 fn dequant_q4_0(data: &[u8], n: usize) -> Vec<f32> {
     let mut out = vec![0.0f32; n];
@@ -397,6 +516,58 @@ mod tests {
         assert_eq!(v.len(), 2);
         assert!((v[0] - 1.0).abs() < 1e-4);
         assert!((v[1] - 2.0).abs() < 1e-4);
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn test_gguf_name_to_hf() {
+        assert_eq!(gguf_name_to_hf("token_embd.weight"),
+                   Some("model.embed_tokens.weight".into()));
+        assert_eq!(gguf_name_to_hf("output.weight"), Some("lm_head.weight".into()));
+        assert_eq!(gguf_name_to_hf("output_norm.weight"), Some("model.norm.weight".into()));
+        assert_eq!(gguf_name_to_hf("blk.0.attn_q.weight"),
+                   Some("model.layers.0.self_attn.q_proj.weight".into()));
+        assert_eq!(gguf_name_to_hf("blk.0.attn_output.weight"),
+                   Some("model.layers.0.self_attn.o_proj.weight".into()));
+        assert_eq!(gguf_name_to_hf("blk.0.ffn_gate.weight"),
+                   Some("model.layers.0.mlp.gate_proj.weight".into()));
+        assert_eq!(gguf_name_to_hf("blk.0.ffn_gate_inp.weight"),
+                   Some("model.layers.0.mlp.gate.weight".into()));
+        assert_eq!(gguf_name_to_hf("blk.0.ffn_exps.1.w1.weight"),
+                   Some("model.layers.0.mlp.experts.1.gate_up_proj.weight".into()));
+        assert_eq!(gguf_name_to_hf("blk.0.ffn_exps.1.w2.weight"),
+                   Some("model.layers.0.mlp.experts.1.down_proj.weight".into()));
+        assert_eq!(gguf_name_to_hf("aux.weight"), None);
+    }
+
+    #[test]
+    fn test_gguf_weight_store() {
+        // 合成 GGUF：token_embd.weight（F16 [2]——值 1.0, 2.0）
+        let path = std::env::temp_dir().join("store_test.gguf");
+        let mut d = Vec::new();
+        d.extend_from_slice(b"GGUF");
+        d.extend_from_slice(&3u32.to_le_bytes());
+        d.extend_from_slice(&1u64.to_le_bytes());
+        d.extend_from_slice(&0u64.to_le_bytes());
+        let name = "token_embd.weight";
+        d.extend_from_slice(&(name.len() as u64).to_le_bytes());
+        d.extend_from_slice(name.as_bytes());
+        d.extend_from_slice(&1u32.to_le_bytes());          // 1 维
+        d.extend_from_slice(&2u64.to_le_bytes());          // shape[0]=2
+        d.extend_from_slice(&1u32.to_le_bytes());          // F16
+        d.extend_from_slice(&73u64.to_le_bytes());         // offset=数据位置（24头+25名+24索引）
+        d.extend_from_slice(&(0x3C00u16).to_le_bytes());   // 1.0
+        d.extend_from_slice(&(0x4000u16).to_le_bytes());   // 2.0
+        fs::write(&path, d).unwrap();
+        let mut store = GgufWeightStore::open(path.to_str().unwrap()).expect("打开失败");
+        // HF 名 → GGUF 名映射读取
+        let v = store.get("model.embed_tokens.weight").expect("读取失败");
+        assert_eq!(v.len(), 2);
+        assert!((v[0] - 1.0).abs() < 1e-4);
+        assert!((v[1] - 2.0).abs() < 1e-4);
+        // 缓存命中 + 未命中
+        assert_eq!(store.get("model.embed_tokens.weight").unwrap().len(), 2);
+        assert!(store.get("nope.weight").is_none());
         let _ = fs::remove_file(path);
     }
 }

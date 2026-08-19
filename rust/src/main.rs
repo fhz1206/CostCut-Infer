@@ -257,6 +257,11 @@ fn save_history_file(path: &str, ids: &[usize]) {
     let _ = std::fs::write(path, format!("[{body}]"));
 }
 
+/// per-model 历史文件路径（/model 切换时保存当前/加载目标——镜像 per-model 历史持久化）。
+fn per_model_hist_file(name: &str) -> String {
+    format!("history_{name}.json")
+}
+
 /// 默认入口：交互式 CLI（与 Python cli_chat 输出格式一致——横幅/You:/Assistant:）。
 fn run_cli() {
     use std::io::Write;
@@ -273,13 +278,17 @@ fn run_cli() {
             return;
         }
     };
-    let m = synthetic_model();   // 真实模型组装（from_real）接入为后续
+    // 模型注册表（name → Model——/model 实际换模型；真实 from_real 多模型为后续）
+    let mut models: std::collections::HashMap<String, engine::model::Model> =
+        std::collections::HashMap::new();
+    models.insert(CURRENT_MODEL.to_string(), synthetic_model());
+    let mut active_model = CURRENT_MODEL.to_string();   // /model 切换的当前模型
     // engine.toml 配置化（[inference] 四开关 + 生成参数 + [chat] 历史——镜像 Python cli_chat）
     let cfg = crate::io::config::load_engine_toml();
     let auto_save = cfg.get_bool("chat", "auto_save_history");
-    let hist_file = cfg.get("chat", "history_file").unwrap_or(".chat_history.json").to_string();
-    let mut history: Vec<usize> = if auto_save { load_history_file(&hist_file) } else { Vec::new() };
-    let mut current_model = CURRENT_MODEL.to_string();   // /model 切换的当前模型（from_real 多模型接入为后续）
+    let mut history: Vec<usize> = if auto_save {
+        load_history_file(&per_model_hist_file(CURRENT_MODEL))
+    } else { Vec::new() };
     // 多轮上下文（ids 累积——简化；封顶 512；auto_save 时从文件加载）
     let mut speculate_on = cfg.get_bool("inference", "speculate");   // /speculate 开关（默认取配置）
     let temp = cfg.get_f32("inference", "temperature", 0.9);
@@ -289,7 +298,7 @@ fn run_cli() {
     let _spec_enabled = cfg.get("model", "dspark_model").map_or(false, |v| !v.is_empty());
     let mut spec = crate::engine::speculator::MarkovSpeculator::new();
     // 真实草稿模型（DSpark）——接入投机路径（draft_forward 替代简化 Markov）
-    let draft = load_draft_model(&m);
+    let draft = load_draft_model(&models[CURRENT_MODEL]);
     loop {
         print!("\nYou: ");
         let _ = std::io::stdout().flush();
@@ -317,16 +326,23 @@ fn run_cli() {
                 }
                 "/model" => {
                     if arg.is_empty() {
-                        println!("Current Model: {current_model}");
+                        println!("Current Model: {active_model}");
                     } else {
-                        let models = cfg.models();
-                        if models.iter().any(|n| n == &arg) {
-                            current_model = arg.clone();
-                            history.clear();
-                            if auto_save {
-                                save_history_file(&hist_file, &history);
+                        let models_list = cfg.models();
+                        if models_list.iter().any(|n| n == &arg) {
+                            // 实际换模型（惰性构造——合成；真实 from_real 为后续）
+                            if !models.contains_key(&arg) {
+                                models.insert(arg.clone(), synthetic_model());
                             }
-                            println!("[System] 已切换到模型: {current_model}");
+                            // per-model 历史：保存当前模型 + 加载目标模型
+                            if auto_save {
+                                save_history_file(&per_model_hist_file(&active_model), &history);
+                            }
+                            active_model = arg.clone();
+                            history = if auto_save {
+                                load_history_file(&per_model_hist_file(&active_model))
+                            } else { Vec::new() };
+                            println!("[System] 已切换到模型: {active_model}");
                         } else {
                             println!("[Error] 未知模型: {arg}（/models 查看）");
                         }
@@ -344,7 +360,7 @@ fn run_cli() {
                 "/clear" => {
                     history.clear();
                     if auto_save {
-                        save_history_file(&hist_file, &history);
+                        save_history_file(&per_model_hist_file(&active_model), &history);
                     }
                     println!("[System] 历史已清空");
                 }
@@ -382,6 +398,7 @@ fn run_cli() {
                 *text = new_text;
             }
         };
+        let m = &models[&active_model];   // 生成用当前 active 模型（/model 实际切换）
         if speculate_on {
             // 投机路径：真实草稿模型（DraftModel.draft_forward）草稿 + 主模型验证
             if let Some(dm) = &draft {
@@ -415,7 +432,7 @@ fn run_cli() {
             } else {
                 // 回退：Markov 草稿 + 主模型验证
                 spec.observe(&history);
-                let gen = spec.generate_speculative(&m, &history, 4, max_new);
+                let gen = spec.generate_speculative(&m, &history, 4, max_new, temp, top_k, top_p);
                 println!("{}", tok.decode(&gen));
                 gen_ids = gen;
                 text = tok.decode(&gen_ids);
@@ -432,7 +449,7 @@ fn run_cli() {
             history.drain(0..history.len() - 512);
         }
         if auto_save {
-            save_history_file(&hist_file, &history);
+            save_history_file(&per_model_hist_file(&active_model), &history);
         }
     }
     println!();

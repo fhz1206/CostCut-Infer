@@ -296,25 +296,32 @@ impl Model {
     }
 
     /// 逐 token 流式生成（镜像 Python generate_stream——每 token 回调一次）。
+    /// 逐 token 流式生成（镜像 Python generate_stream——KV 缓存续接：首 token prefill_cached，
+    /// 后续 decode_step——避免每 token 全量 prefill 的 O(L²) 开销）。
     pub fn generate_stream_sampled(&self, input_ids: &[usize], max_new_tokens: usize,
                                    temperature: f32, top_k: usize, top_p: f32,
                                    _repetition_penalty: f32,
                                    on_token: &mut dyn FnMut(usize)) -> Vec<usize> {
-        let mut ids = input_ids.to_vec();
+        let mut cache = KVCache::new(self.num_layers);
+        let h_full = self.prefill_cached(input_ids, &mut cache);    // (L, hidden)——post-norm 隐藏态
+        let mut h = Tensor::from_vec(
+            1, h_full.cols,
+            h_full.data[(h_full.rows - 1) * h_full.cols..].to_vec());
+        let mut pos = input_ids.len();
         let mut out = Vec::new();
         for _ in 0..max_new_tokens {
-            let logits = self.prefill(&ids);
-            let start = (ids.len() - 1) * logits.cols;
-            let last = &logits.data[start..start + logits.cols];
+            let logits = h.matmul(&self.lm_head.transpose());       // (1, vocab)
+            let last = &logits.data[..logits.cols];
             let tok = if temperature <= 0.0 {
                 crate::engine::sampling::argmax_row(last)
             } else {
-                let mut rng = || 0.5;   // 固定随机种子（纯 std——后续接入可复现随机）
+                let mut rng = || 0.5;   // 固定随机种子（纯 std）
                 crate::engine::sampling::sample_row_p(last, temperature, top_k, top_p, &mut rng)
             };
-            ids.push(tok);
             out.push(tok);
             on_token(tok);
+            h = self.decode_step(tok, pos, &mut cache);
+            pos += 1;
         }
         out
     }
