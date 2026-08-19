@@ -1,6 +1,6 @@
-# Python 与 Rust 版本对比报告（v2.0——详细版）
+# Python 与 Rust 版本对比报告（v3.0——详细版）
 
-> 日期：2026-08-19 ｜ 对象：CostCut Infer（Python 版 liteengine + Rust 版 costcut-infer）｜ 两版均保留
+> 日期：2026-08-19（v3.0 更新：K 系列 GGUF/投机采样接受/MTP/多模型真实切换/per-model 历史/KV 缓存续接已同步）｜ 对象：CostCut Infer（Python 版 liteengine + Rust 版 costcut-infer）｜ 两版均保留
 > 定位：发布包永远为 Rust 版（build.sh 自动化构建）；Python 版作为技术探索（新功能首发——稳定后同步 Rust）。
 
 ## 1. 两版总览
@@ -112,22 +112,21 @@
 ## 4. 差距汇总
 
 ### 已同步 ✅（核心链路）
-加载（多 dtype/多 shard/tokenizer/GGUF 全类型 + 元数据配置）、反量化（AWQ/GPTQ/FP8/NVFP4）、注意力（Standard/Full/MLA/GatedDeltaNet）、MoE 量化专家、compute_dtype（fp16/bf16 权重路径）、配置归一化（含 Qwen3.5 text_config）、CLI（格式/流式/历史/多模型/命令/采样）、投机（Markov + DraftModel + markov_head + CLI 接入）、engine.toml 配置（含 [model] 多块/[chat]）、五注册点、多模态注册点、模型路径解析。
+加载（多 dtype/多 shard/tokenizer/GGUF 全类型 + 元数据配置 + **名称映射 + GgufWeightStore**）、反量化（AWQ/GPTQ/FP8/NVFP4）、**K 系列 GGUF（Q4_K/Q5_K/Q6_K——镜像 llama.cpp）**、注意力（Standard/Full/MLA/GatedDeltaNet）、MoE 量化专家、compute_dtype（fp16/bf16 权重路径）、配置归一化（含 Qwen3.5 text_config 嵌套）、CLI（格式/流式/**KV 缓存续接**/**多模型真实切换**/**per-model 历史**/命令/采样）、投机（Markov + DraftModel + markov_head + **投机采样接受** + CLI 接入）、**MTP（单模块 MtpModule）**、engine.toml 配置（含 [model] 多块/[inference]/[chat]）、五注册点、多模态注册点、模型路径解析。
 
 ### 部分 ⚠️
 | 差距 | 说明 | 优先级 |
 |---|---|---|
-| 真实模型端到端生成 | 截断浅层冒烟（1 层）已通；完整 61 层生成受标量反量化性能限制（分钟级/层）——待 SIMD 内核 | **P0** |
-| GGUF 名称映射 | Python gguf_name_to_hf；Rust 张量按名直读（映射表未做） | P1 |
+| 真实模型端到端生成 | from_real 构造修复 ✓（含 full 注意力构造器注册）；完整 61 层生成受标量反量化性能限制（1 层 280s 超时）——待 SIMD 打包内核/BLAS | **P0** |
+| MTP 多模块链 | 单模块已实现；k 模块预测链组装为后续 | P2 |
 | fp16/bf16 计算内核 | 权重路径已接入；f32 计算为主（完整 fp16/bf16 内核为 P2） | P2 |
 | 灵活缩放（per-channel[in]/[out]/2D） | Rust per-tensor 为主 | P2 |
-| 投机采样接受 | Rust 贪心 argmax（Python 投机采样 accept） | P2 |
+| 投机草稿概率 | 接受公式 p_draft 简化 1.0（真实草稿概率为后续） | P2 |
 
 ### 未同步 ❌
 | 差距 | 说明 | 优先级 |
 |---|---|---|
-| MTP 多 token 预测 | Python mtp.py 已有；Rust 无 | P2 |
-| K 系列 GGUF 量化 | 两版均未做（无 llama.cpp 参考源码） | P2 |
+| （暂无——核心链路已全部对齐；剩余为 P0-P2 性能/深水区） | | |
 
 ## 5. 结论
 

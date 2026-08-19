@@ -14,13 +14,19 @@
 | dense_mlp 路径 | `engine::layer`（DecoderLayer.dense_mlp + mlp_forward） | 稠密层测试 ✓ |
 | 配置归一化（多架构/通用回退） | `engine::model_config`（load_model_config + 注册表） | 12 项归一化测试 ✓ |
 | int4 融合 matmul / AVX2 / 并行 matmul | `quant::dequant::matmul_awq_int4` / `core::tensor::matmul_avx2` / matmul_par | 等价 + 实测 ✓（均实测负收益，保留实现） |
+| GGUF 名称映射 + GgufWeightStore | `io::gguf`（gguf_name_to_hf——HF 名读取 + MoE gate_up 合并） | 映射/读取测试 ✓ |
+| K 系列 GGUF（Q4_K/Q5_K/Q6_K） | `io::gguf`（dequant_q4_k/q5_k/q6_k——镜像 llama.cpp） | 合成块测试 ✓ |
+| 投机采样接受 | `engine::speculator`（generate_speculative 贪心/非贪心 + softmax_val） | 43 测试全绿 ✓ |
+| MTP（单模块） | `engine::mtp`（MtpModule——enorm/hnorm + eh_proj + 附加层 + 共享输出头） | 43 测试全绿 ✓ |
+| 多模型真实切换 + per-model 历史 | `main.rs`（模型注册表 + /model 实际换模型 + history_{name}.json） | CLI 测试 ✓ |
+| KV 缓存续接 | `engine::model`（generate_stream_sampled——prefill_cached + decode_step） | 43 测试全绿 ✓ |
 
 ## 2. 待同步（后续——按优先级）
 
 | 优先级 | Python 功能 | Rust 同步内容 | 备注 |
 |---|---|---|---|
 | **P0** | 注册表（registry 四注册点 + vision 注册点） | Rust trait/枚举分发（attention/moe_format/quant_method/arch_normalizer/vision） | ✅ **已同步**：`engine/registry.rs`（Attention trait + 注册/获取/列表 + standard 构造器） |
-| **P0** | GGUF 解析与反量化 | `io::gguf`（元数据/张量索引/名称映射/K 系列量化） | 需参考 llama.cpp k-quants 源码 |
+| **P0** | GGUF 解析与反量化 | `io::gguf`（元数据/张量索引/名称映射/K 系列量化） | ✅ **已同步**：名称映射 + GgufWeightStore + K 系列 Q4_K/Q5_K/Q6_K（镜像 llama.cpp——Q2_K/Q3_K 为后续） |
 | P1 | dspark 投机解码 | `engine::speculator`（草稿-验证-接受 + markov_head） | 5 层实测慢（开关化） |
 | P1 | compute_dtype 配置 | Rust 反量化输出 dtype 参数（fp32 默认/fp16） | ⚠️ **已评估**：Rust 张量为 f32-only——fp16 输出需 fp16 张量类型/计算内核（归入 P2 不同精度计算）；Python 侧 compute_dtype 已配置化 |
 | P1 | KV 预分配（kv_append） | 预分配 + 位置索引（owned-tensor 收益有限——评估后定） | ⚠️ **已评估**：Rust owned-tensor 切片即拷贝——预分配收益有限——**保持 concat_rows**（与 Python 的对齐结论一致） |

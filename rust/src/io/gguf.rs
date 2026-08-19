@@ -232,6 +232,9 @@ impl GgufReader {
             6 => Some(dequant_q5_0(raw, n)),
             7 => Some(dequant_q5_1(raw, n)),
             8 => Some(dequant_q8_0(raw, n)),
+            12 => Some(dequant_q4_k(raw, n)),
+            13 => Some(dequant_q5_k(raw, n)),
+            14 => Some(dequant_q6_k(raw, n)),
             _ => None,
         }
     }
@@ -369,6 +372,112 @@ impl GgufWeightStore {
         }
         None
     }
+}
+
+/// get_scale_min_k4（镜像 llama.cpp ggml-quants.c：12B scales 的 3-bit 超块 scale/min 提取）。
+fn get_scale_min_k4(j: usize, scales: &[u8]) -> (u8, u8) {
+    if j < 4 {
+        (scales[j] & 63, scales[j + 4] & 63)
+    } else {
+        (
+            (scales[j + 4] & 0xF) | ((scales[j - 4] >> 6) << 4),
+            (scales[j + 4] >> 4) | ((scales[j] >> 6) << 4),
+        )
+    }
+}
+
+/// Q4_K 反量化（镜像 llama.cpp dequantize_row_q4_K）：每块 256 值——d/dmin（f16）+ 12B scales + 128B qs。
+fn dequant_q4_k(data: &[u8], n: usize) -> Vec<f32> {
+    let mut out = vec![0.0f32; n];
+    let block = 144usize;   // 2 + 2 + 12 + 128
+    let mut pos = 0usize;
+    let mut i = 0usize;
+    while i < n && pos + block <= data.len() {
+        let d = f16_to_f32(u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()));
+        let min = f16_to_f32(u16::from_le_bytes(data[pos + 2..pos + 4].try_into().unwrap()));
+        let scales = &data[pos + 4..pos + 16];
+        let qs = &data[pos + 16..pos + 144];
+        let mut is = 0usize;
+        for _g in 0..4 {   // 4 组 × 64 值
+            let (sc1, m1b) = get_scale_min_k4(is, scales);
+            let d1 = d * sc1 as f32;
+            let m1 = min * m1b as f32;
+            let (sc2, m2b) = get_scale_min_k4(is + 1, scales);
+            let d2 = d * sc2 as f32;
+            let m2 = min * m2b as f32;
+            for l in 0..32 {
+                if i < n { out[i] = d1 * (qs[l] & 0x0F) as f32 - m1; }
+                if i + 1 < n { out[i + 1] = d2 * (qs[l] >> 4) as f32 - m2; }
+                i += 2;
+            }
+            is += 2;
+        }
+        pos += block;
+    }
+    out
+}
+
+/// Q5_K 反量化（镜像 llama.cpp dequantize_row_q5_K）：同 Q4_K + qh 32B 的第 5 位。
+fn dequant_q5_k(data: &[u8], n: usize) -> Vec<f32> {
+    let mut out = vec![0.0f32; n];
+    let block = 176usize;   // 2 + 2 + 12 + 128 + 32
+    let mut pos = 0usize;
+    let mut i = 0usize;
+    while i < n && pos + block <= data.len() {
+        let d = f16_to_f32(u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()));
+        let min = f16_to_f32(u16::from_le_bytes(data[pos + 2..pos + 4].try_into().unwrap()));
+        let scales = &data[pos + 4..pos + 16];
+        let qs = &data[pos + 16..pos + 144];
+        let qh = &data[pos + 144..pos + 176];
+        let mut is = 0usize;
+        for _g in 0..4 {
+            let (sc1, m1b) = get_scale_min_k4(is, scales);
+            let d1 = d * sc1 as f32;
+            let m1 = min * m1b as f32;
+            let (sc2, m2b) = get_scale_min_k4(is + 1, scales);
+            let d2 = d * sc2 as f32;
+            let m2 = min * m2b as f32;
+            for l in 0..32 {
+                let v1 = ((qs[l] & 0x0F) as i32 + if qh[l] & 1 != 0 { 16 } else { 0 }) as f32;
+                let v2 = ((qs[l] >> 4) as i32 + if qh[l] & 2 != 0 { 16 } else { 0 }) as f32;
+                if i < n { out[i] = d1 * v1 - m1; }
+                if i + 1 < n { out[i + 1] = d2 * v2 - m2; }
+                i += 2;
+            }
+            is += 2;
+        }
+        pos += block;
+    }
+    out
+}
+
+/// Q6_K 反量化（镜像 llama.cpp dequantize_row_q6_K）：d + ql 128B + qh 64B + scales 16B int8。
+fn dequant_q6_k(data: &[u8], n: usize) -> Vec<f32> {
+    let mut out = vec![0.0f32; n];
+    let block = 210usize;   // 2 + 128 + 64 + 16
+    let mut pos = 0usize;
+    let mut i = 0usize;
+    while i < n && pos + block <= data.len() {
+        let d = f16_to_f32(u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()));
+        let ql = &data[pos + 2..pos + 130];
+        let qh = &data[pos + 130..pos + 194];
+        let sc = &data[pos + 194..pos + 210];
+        for l in 0..32 {
+            let is = l / 16;
+            let q1 = ((ql[l] & 0x0F) as i32 | ((qh[l] & 0x03) as i32) << 4) - 32;
+            let q2 = ((ql[l + 32] & 0x0F) as i32 | (((qh[l] >> 2) & 0x03) as i32) << 4) - 32;
+            let q3 = ((ql[l] >> 4) as i32 | (((qh[l] >> 4) & 0x03) as i32) << 4) - 32;
+            let q4 = ((ql[l + 32] >> 4) as i32 | (((qh[l] >> 6) & 0x03) as i32) << 4) - 32;
+            let s = sc[is] as i8 as f32;
+            if i < n { out[i] = d * s * q1 as f32; }
+            if i + 1 < n { out[i + 1] = d * s * q2 as f32; }
+            if i + 2 < n { out[i + 2] = d * s * q3 as f32; }
+            if i + 3 < n { out[i + 3] = d * s * q4 as f32; }
+            i += 4;
+        }
+        pos += block;
+    }
+    out
 }
 
 /// Q4_0 反量化（ggml 公式）：每 32 值一块——f16 scale + 16 字节（低 4 位前 16 值，高 4 位后 16 值）。
@@ -569,5 +678,22 @@ mod tests {
         assert_eq!(store.get("model.embed_tokens.weight").unwrap().len(), 2);
         assert!(store.get("nope.weight").is_none());
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn test_dequant_q4_k() {
+        // 合成 Q4_K 块（144B）：d=1.0, dmin=0.0, scales 使 3-bit 超块 scale=1/min=1，qs 全 0x05
+        let mut data = vec![0u8; 144];
+        data[0..2].copy_from_slice(&(0x3C00u16).to_le_bytes());   // d = 1.0
+        data[2..4].copy_from_slice(&(0x0000u16).to_le_bytes());   // dmin = 0.0
+        for b in 4..16 { data[b] = 0b01000001; }   // 6-bit scale=1, 6-bit min=1（get_scale_min_k4 j<4）
+        for b in 16..144 { data[b] = 0x05; }       // qs：低 4 位 5，高 4 位 0
+        let out = dequant_q4_k(&data, 256);
+        assert_eq!(out.len(), 256);
+        // 第 1 超块（j<4）：d1 = 1.0*1 = 1.0，m1 = 0.0*1 = 0.0——低 4 位 5 → 5.0
+        assert!((out[0] - 5.0).abs() < 1e-4, "{}", out[0]);
+        // 高 4 位 0 → d2*0 - m2 = 0.0
+        assert!(out[1].abs() < 1e-4, "{}", out[1]);
+        let _ = data;
     }
 }
