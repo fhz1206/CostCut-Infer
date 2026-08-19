@@ -31,6 +31,7 @@ pub struct ModelConfig {
     pub conv_kernel_size: usize,
     pub rope_dim: usize,
     pub moe_intermediate: usize,
+    pub compute_dtype: String,   // "float32" / "float16" / "bf16"（fp16 权重路径）
 }
 
 /// MoE 规格。
@@ -40,6 +41,7 @@ pub struct MoeConfig {
     pub top_k: usize,
     pub intermediate: usize,
     pub shared: bool,
+    pub group_size: usize,
 }
 
 fn num(fields: &HashMap<String, String>, key: &str, default: usize) -> usize {
@@ -97,6 +99,7 @@ pub fn load_model_config(model_dir: &str) -> Result<ModelConfig, String> {
                               num(&fields, "intermediate_size", 4 * hidden)),
             shared: num(&fields, "n_shared_experts", 0) > 0
                 || num(&fields, "shared_expert_intermediate_size", 0) > 0,
+            group_size: num(&fields, "group_size", 32),
         })
     } else {
         None                        // 稠密 MLP（Llama 家族 / 通用回退的稠密模型）
@@ -114,6 +117,8 @@ pub fn load_model_config(model_dir: &str) -> Result<ModelConfig, String> {
         conv_kernel_size: num(&fields, "conv_kernel_size", 4),
         rope_dim: num(&fields, "rope_dim", head_dim),
         moe_intermediate: num(&fields, "moe_intermediate_size", 4 * hidden),
+        compute_dtype: fields.get("compute_dtype")
+            .cloned().unwrap_or_else(|| "float32".to_string()),
     })
 }
 

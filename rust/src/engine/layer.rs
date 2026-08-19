@@ -48,7 +48,8 @@ impl DecoderLayer {
             router: TopKRouter { weight: router_w, top_k: 1 },
             experts: MergedExperts {
                 num_experts: num_exp, intermediate: cfg.moe_intermediate, hidden,
-                gate_up, down,
+                gate_up, down, gate_up_f16: None, down_f16: None,
+                gate_up_bf16: None, down_bf16: None,
             },
             shared: None,
             dense_mlp: None,
@@ -127,6 +128,8 @@ mod tests {
                 num_experts: e, intermediate: inter, hidden,
                 gate_up: vec![0.1; e * 2 * inter * hidden],
                 down: vec![0.1; e * hidden * inter],
+                gate_up_f16: None, down_f16: None,
+                gate_up_bf16: None, down_bf16: None,
             },
             shared: None,
             dense_mlp: None,
@@ -161,6 +164,8 @@ mod tests {
                 num_experts: 1, intermediate: inter, hidden,
                 gate_up: vec![0.1; 2 * inter * hidden],
                 down: vec![0.1; hidden * inter],
+                gate_up_f16: None, down_f16: None,
+                gate_up_bf16: None, down_bf16: None,
             },
             shared: None,
             dense_mlp: Some(MLP {

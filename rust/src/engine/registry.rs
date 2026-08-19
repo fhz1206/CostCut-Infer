@@ -140,6 +140,150 @@ pub fn list_attentions() -> Vec<String> {
     v
 }
 
+/// 视觉编码器构造器（占位注册点——镜像 Python registry.py 的 register_vision_encoder）。
+/// 真实视觉推理缺依赖/模型（诚实标注——现状 0 内置）。
+pub type VisionEncoderBuilder = fn(&SafeTensors, &str, usize) -> Option<Vec<f32>>;
+
+static mut VISION_ENCODERS: Option<HashMap<String, VisionEncoderBuilder>> = None;
+
+fn vision_map() -> &'static mut HashMap<String, VisionEncoderBuilder> {
+    unsafe {
+        VISION_ENCODERS.get_or_insert_with(|| HashMap::new())
+    }
+}
+
+/// 注册视觉编码器构造器（外部扩展：真实多模态接入）。
+pub fn register_vision_encoder(name: &str, builder: VisionEncoderBuilder) {
+    vision_map().insert(name.to_string(), builder);
+}
+
+/// 按名称取视觉编码器构造器。
+pub fn get_vision_encoder(name: &str) -> Option<VisionEncoderBuilder> {
+    vision_map().get(name).copied()
+}
+
+/// 已注册的视觉编码器列表（当前 0 内置——多模态真实推理待依赖/模型）。
+pub fn list_vision_encoders() -> Vec<String> {
+    let mut v: Vec<String> = vision_map().keys().cloned().collect();
+    v.sort();
+    v
+}
+
+// ---- 额外注册点（镜像 Python registry.py 的 moe_format/quant_method/arch_normalizer）----
+
+/// MoE 分发构造函数类型（store → MoE 参数）。
+pub type MoeFormatBuilder = fn(&SafeTensors, &str, usize, usize) -> (Vec<f32>, Vec<f32>, usize);
+
+static mut MOE_FORMATS: Option<HashMap<String, MoeFormatBuilder>> = None;
+
+fn moe_map() -> &'static mut HashMap<String, MoeFormatBuilder> {
+    unsafe {
+        MOE_FORMATS.get_or_insert_with(|| {
+            let mut m = HashMap::new();
+            m.insert("merged".to_string(), default_moe_builder as MoeFormatBuilder);
+            m
+        })
+    }
+}
+
+/// 占位默认 MoE 构造（merged 形式——真实 per-expert 为后续）。
+fn default_moe_builder(_store: &SafeTensors, _prefix: &str, _e: usize, _inter: usize)
+                       -> (Vec<f32>, Vec<f32>, usize) {
+    (vec![], vec![], 0)
+}
+
+/// 注册 MoE 分发构造器。
+pub fn register_moe_format(name: &str, builder: MoeFormatBuilder) {
+    moe_map().insert(name.to_string(), builder);
+}
+
+/// 按名称取 MoE 分发构造器。
+pub fn get_moe_format(name: &str) -> Option<MoeFormatBuilder> {
+    moe_map().get(name).copied()
+}
+
+/// 已注册的 MoE 分发类型列表。
+pub fn list_moe_formats() -> Vec<String> {
+    let mut v: Vec<String> = moe_map().keys().cloned().collect();
+    v.sort();
+    v
+}
+
+/// 量化反量化处理器（镜像 Python register_quant_method）：handler(qweight, qzeros,
+/// scales, out, in_, group_size) -> Vec<f32>。
+pub type QuantMethodHandler = fn(&[i32], Option<&[i32]>, &[f32], usize, usize, usize)
+    -> Vec<f32>;
+
+/// AWQ 处理器包装（qzeros 是 Option——镜像 Python 的 sym 支持）。
+fn awq_handler(qw: &[i32], qz: Option<&[i32]>, sc: &[f32], out: usize, in_: usize, gs: usize)
+               -> Vec<f32> {
+    crate::quant::dequant::dequantize_awq(qw, qz.unwrap_or(&[]), sc, out, in_, gs)
+}
+
+static mut QUANT_METHODS: Option<HashMap<String, QuantMethodHandler>> = None;
+
+fn quant_map() -> &'static mut HashMap<String, QuantMethodHandler> {
+    unsafe {
+        QUANT_METHODS.get_or_insert_with(|| {
+            let mut m = HashMap::new();
+            m.insert("awq".to_string(), awq_handler as QuantMethodHandler);
+            m
+        })
+    }
+}
+
+/// 注册量化反量化处理器。
+pub fn register_quant_method(name: &str, handler: QuantMethodHandler) {
+    quant_map().insert(name.to_string(), handler);
+}
+
+/// 按名称取量化处理器。
+pub fn get_quant_method(name: &str) -> Option<QuantMethodHandler> {
+    quant_map().get(name).copied()
+}
+
+/// 已注册的量化方法列表。
+pub fn list_quant_methods() -> Vec<String> {
+    let mut v: Vec<String> = quant_map().keys().cloned().collect();
+    v.sort();
+    v
+}
+
+/// 架构归一化器（镜像 Python register_arch_normalizer——patterns 命中匹配分发）。
+/// normalizer => 归一化配置；patterns 任一子串命中即选用（未命中走通用回退）。
+pub type ArchNormalizer = fn(&std::collections::HashMap<String, String>)
+    -> crate::engine::model_config::ModelConfig;
+
+static mut ARCH_NORMALIZERS: Option<HashMap<String, ArcPatterns>> = None;
+
+struct ArcPatterns {
+    normalizer: ArchNormalizer,
+    patterns: Vec<String>,
+}
+
+fn arch_map() -> &'static mut HashMap<String, ArcPatterns> {
+    unsafe {
+        ARCH_NORMALIZERS.get_or_insert_with(|| HashMap::new())
+    }
+}
+
+/// 注册架构归一化器（patterns 为 architectures/model_type 子串匹配）。
+pub fn register_arch_normalizer(name: &str, patterns: Vec<String>, normalizer: ArchNormalizer) {
+    arch_map().insert(name.to_string(), ArcPatterns { normalizer, patterns });
+}
+
+/// 按名称取架构归一化器。
+pub fn get_arch_normalizer(name: &str) -> Option<ArchNormalizer> {
+    arch_map().get(name).map(|a| a.normalizer)
+}
+
+/// 已注册的架构归一化器列表。
+pub fn list_arch_normalizers() -> Vec<String> {
+    let mut v: Vec<String> = arch_map().keys().cloned().collect();
+    v.sort();
+    v
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,5 +297,23 @@ mod tests {
         register_attention("custom", _build_standard);
         assert!(get_attention("custom").is_some());
         assert!(list_attentions().contains(&"custom".to_string()));
+    }
+
+    #[test]
+    fn test_vision_moe_registry() {
+        // vision 注册点（外部扩展——多模态真实接入为后续）
+        assert!(list_vision_encoders().is_empty());
+        assert!(get_vision_encoder("none").is_none());
+        fn fake_vision(_s: &SafeTensors, _p: &str, _h: usize) -> Option<Vec<f32>> { Some(vec![0.0]) }
+        register_vision_encoder("fake", fake_vision);
+        assert!(get_vision_encoder("fake").is_some());
+        assert!(list_vision_encoders().contains(&"fake".to_string()));
+        // moe_format 注册点
+        assert!(list_moe_formats().contains(&"merged".to_string()));
+        assert!(get_moe_format("merged").is_some());
+        fn fake_moe(_s: &SafeTensors, _p: &str, _e: usize, _i: usize)
+                    -> (Vec<f32>, Vec<f32>, usize) { (vec![], vec![], 0) }
+        register_moe_format("custom", fake_moe);
+        assert!(get_moe_format("custom").is_some());
     }
 }

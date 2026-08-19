@@ -77,6 +77,34 @@ pub fn dequantize_awq(qweight: &[i32], qzeros: &[i32], scales: &[f32],
     result
 }
 
+/// f32 → fp16（IEEE 754 half——round-to-nearest，纯 std）。
+/// 镜像 Python / torch 的 .to(torch.float16) 输出语义。
+pub fn f32_to_f16_bits(v: f32) -> u16 {
+    let bits = v.to_bits();
+    let sign = ((bits >> 16) & 0x8000) as u16;
+    let exp = ((bits >> 23) & 0xFF) as i32;
+    let mant = bits & 0x7FFFFF;
+    // 数值剥符号后的指数
+    let raw_exp = ((bits >> 23) & 0xFF) as i32 - 127;
+    if raw_exp >= 16 {
+        // 溢出 → 无穷（或最大 fp16）
+        return sign | 0x7C00;
+    }
+    let biased = (raw_exp + 15) as i32;
+    if biased <= 0 {
+        // 次正规 / 零
+        return sign | (mant >> 13) as u16;   // 简化次正规
+    }
+    let m = (mant >> 13) as u16;
+    let round = ((mant >> 12) & 1) as u16;
+    sign | ((biased as u16) << 10) | (m + round)
+}
+
+/// 把 f32 数组转成 fp16 的 u16 位型数组（compute_dtype="float16" 的反量化输出）。
+pub fn to_f16_bits(data: &[f32]) -> Vec<u16> {
+    data.iter().map(|&v| f32_to_f16_bits(v)).collect()
+}
+
 /// int4 原生 matmul（差异报告 #3）：AWQ int4 权重**解量化融合进 matmul 循环**，
 /// 避免反量化结果写回内存再读取的双重往返。
 ///
@@ -180,6 +208,42 @@ pub fn dequantize_nvfp4(qweight: &[u8], s_block: &[f32], s_global: f32,
     out
 }
 
+/// 通用列打包解包（线性序——bits 2/4/8——GPTQ 无 AWQ 列序重排）。
+fn unpack_generic(packed: &[u8], bits: usize) -> Vec<i32> {
+    let per_byte = 8 / bits;
+    let mask = ((1u16 << bits) - 1) as u8;   // bits=8 时 1<<8 用 u16 避免溢出
+    let mut out = vec![0i32; packed.len() * per_byte];
+    for (i, &b) in packed.iter().enumerate() {
+        for j in 0..per_byte {
+            out[i * per_byte + j] = ((b >> (bits * j)) & mask) as i32;
+        }
+    }
+    out
+}
+
+/// GPTQ 反量化（线性序列打包——bits 2/4/8；sym 无零点；group_size 沿 out 分组）。
+pub fn dequantize_gptq(qweight: &[u8], qzeros: Option<&[u8]>, scales: &[f32],
+                       out: usize, in_: usize, bits: usize, group_size: usize,
+                       sym: bool) -> Vec<f32> {
+    assert!(in_ * bits % 8 == 0, "in*bits 须为 8 的倍数");
+    let w = unpack_generic(qweight, bits);                    // (out * in_)
+    let z = qzeros.map(|qz| unpack_generic(qz, bits));        // (groups * in_)
+    let groups = (out + group_size - 1) / group_size;
+    let mut result = vec![0.0f32; out * in_];
+    for r in 0..out {
+        let g = r / group_size;
+        for c in 0..in_ {
+            let wv = w[r * in_ + c];
+            let q = match &z {
+                Some(z) => (wv - z[g * in_ + c]) as f32,
+                None => wv as f32,
+            };
+            result[r * in_ + c] = q * scales[g * in_ + c];
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -244,6 +308,36 @@ mod tests {
         // E2M1：5 = 3.0；8 = -0.0
         assert!((e2m1_to_f32(5) - 3.0).abs() < 1e-6);
         assert!(e2m1_to_f32(8) == -0.0);
+    }
+
+    #[test]
+    fn test_dequantize_gptq_sym4() {
+        // bits=4 线性序：0x12 0x34 → [2,1,4,3]（低 4 位在前，in=2 使 in*bits=8）；sym → q*scale
+        let out = dequantize_gptq(&[0x12, 0x34], None, &[0.5, 0.5], 2, 2, 4, 2, true);
+        assert_eq!(out.len(), 4);
+        assert!((out[0] - 1.0).abs() < 1e-5, "{}", out[0]);   // 2 * 0.5
+        assert!((out[1] - 0.5).abs() < 1e-5, "{}", out[1]);   // 1 * 0.5
+    }
+
+    #[test]
+    fn test_dequantize_gptq_asym8() {
+        // bits=8 非对称：0x7F=127；零点 0x01=1；scale 0.1 → (127-1)*0.1 = 12.6
+        let out = dequantize_gptq(&[0x7F], Some(&[0x01]), &[0.1], 1, 1, 8, 1, false);
+        assert!((out[0] - 12.6).abs() < 1e-4, "{}", out[0]);
+    }
+
+    #[test]
+    fn test_f32_to_f16() {
+        // 1.0 → fp16 0x3C00；2.0 → 0x4000；0.5 → 0x3800
+        assert_eq!(f32_to_f16_bits(1.0), 0x3C00);
+        assert_eq!(f32_to_f16_bits(2.0), 0x4000);
+        assert_eq!(f32_to_f16_bits(0.5), 0x3800);
+        assert_eq!(f32_to_f16_bits(-1.0), 0xBC00);
+        // 大值溢出 → 无穷
+        assert_eq!(f32_to_f16_bits(1e30), 0x7C00);
+        // 数组转换
+        let bits = to_f16_bits(&[1.0, 2.0]);
+        assert_eq!(bits, vec![0x3C00, 0x4000]);
     }
 
     #[test]

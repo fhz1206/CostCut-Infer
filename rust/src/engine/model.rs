@@ -34,7 +34,7 @@ impl Model {
                 store.get_f32(name).unwrap_or_else(|| vec![0.01; out * hidden]))
         };
         let embed = get(&format!("{prefix}.embed_tokens.weight"), vocab);
-        let lm_head = get(&format!("{prefix}.lm_head.weight"), vocab);
+        let lm_head = get("lm_head.weight", vocab);   // Qwen3.5 的 lm_head 在顶层（无 language_model 前缀）
         let final_norm_w = store.get_f32(&format!("{prefix}.norm.weight"))
             .unwrap_or_else(|| vec![1.0; hidden]);
         // 逐层组装：layer_types 分发（linear_attention → GatedDeltaNet；full_attention → FullAttention）
@@ -79,23 +79,80 @@ impl Model {
                     crate::engine::registry::get_attention("full").map(|b| b(store, &lp, cfg))
                         .ok_or_else(|| "缺少 full 注意力构造器".to_string())?
                 };
-            // MoE（量化专家——AWQ 反量化按专家；此处用 merged 简化——量化专家路径为后续）
-            let (router_w, gate_up, down) = if cfg.moe.is_some() {
-                let e = cfg.moe.as_ref().unwrap().num_experts;
-                let inter = cfg.moe.as_ref().unwrap().intermediate;
-                (
-                    get(&format!("{lp}.mlp.gate.weight"), e),
-                    vec![0.01; e * 2 * inter * hidden],
-                    vec![0.01; e * hidden * inter],
-                )
+            // MoE（量化专家——AWQ 按专家反量化；gate_up/down 来自 dequantize_awq）
+            // compute_dtype="float16"/"bf16" 时同时构建相应权重接入 matmul_f16/bf16
+            let use_fp16 = cfg.compute_dtype == "float16";
+            let use_bf16 = cfg.compute_dtype == "bf16";
+            let (router_w, gate_up, down, num_exp,
+                 gate_up_f16, down_f16, gate_up_bf16, down_bf16) = if let Some(moe_cfg) = &cfg.moe {
+                let e = moe_cfg.num_experts;
+                let inter = moe_cfg.intermediate;
+                let gs_size = moe_cfg.group_size;
+                let mut gate_up = vec![0.0f32; e * 2 * inter * hidden];
+                let mut down = vec![0.0f32; e * hidden * inter];
+                let mut gate_up_f16: Vec<crate::core::tensor::F16Tensor> = Vec::new();
+                let mut down_f16: Vec<crate::core::tensor::F16Tensor> = Vec::new();
+                let mut gate_up_bf16: Vec<crate::core::tensor::BF16Tensor> = Vec::new();
+                let mut down_bf16: Vec<crate::core::tensor::BF16Tensor> = Vec::new();
+                let dq = crate::quant::dequant::dequantize_awq;
+                for ex in 0..e {
+                    let ep = format!("{lp}.mlp.experts.{ex}");
+                    // Qwen3.5 实际为 gate_proj/up_proj 分离（非融合 gate_up_proj）
+                    let gw = store.get_i32(&format!("{ep}.gate_proj.qweight")).unwrap_or_default();
+                    let gz = store.get_i32(&format!("{ep}.gate_proj.qzeros")).unwrap_or_default();
+                    let gs = store.get_f32(&format!("{ep}.gate_proj.scales")).unwrap_or_default();
+                    let g = dq(&gw, &gz, &gs, inter, hidden, gs_size);
+                    let uw = store.get_i32(&format!("{ep}.up_proj.qweight")).unwrap_or_default();
+                    let uz = store.get_i32(&format!("{ep}.up_proj.qzeros")).unwrap_or_default();
+                    let us = store.get_f32(&format!("{ep}.up_proj.scales")).unwrap_or_default();
+                    let u = dq(&uw, &uz, &us, inter, hidden, gs_size);
+                    let base = ex * 2 * inter * hidden;
+                    gate_up[base..base + inter * hidden].copy_from_slice(&g);
+                    gate_up[base + inter * hidden..base + 2 * inter * hidden].copy_from_slice(&u);
+                    // fp16/bf16 权重（[2*inter, hidden]——与 f32 融合布局一致）
+                    let mut gu_f16 = Vec::with_capacity(inter * hidden * 2);
+                    gu_f16.extend_from_slice(&g);
+                    gu_f16.extend_from_slice(&u);
+                    let dw = store.get_i32(&format!("{ep}.down_proj.qweight")).unwrap_or_default();
+                    let dz = store.get_i32(&format!("{ep}.down_proj.qzeros")).unwrap_or_default();
+                    let ds = store.get_f32(&format!("{ep}.down_proj.scales")).unwrap_or_default();
+                    let d = dq(&dw, &dz, &ds, hidden, inter, gs_size);
+                    down[ex * hidden * inter..(ex + 1) * hidden * inter].copy_from_slice(&d);
+                    if use_fp16 {
+                        gate_up_f16.push(crate::core::tensor::F16Tensor::from_f32(
+                            2 * inter, hidden, &gu_f16));
+                        down_f16.push(crate::core::tensor::F16Tensor::from_f32(
+                            hidden, inter, &d));
+                    }
+                    if use_bf16 {
+                        gate_up_bf16.push(crate::core::tensor::BF16Tensor::from_f32(
+                            2 * inter, hidden, &gu_f16));
+                        down_bf16.push(crate::core::tensor::BF16Tensor::from_f32(
+                            hidden, inter, &d));
+                    }
+                }
+                (get(&format!("{lp}.mlp.gate.weight"), e), gate_up, down, e,
+                 if use_fp16 { Some(gate_up_f16) } else { None },
+                 if use_fp16 { Some(down_f16) } else { None },
+                 if use_bf16 { Some(gate_up_bf16) } else { None },
+                 if use_bf16 { Some(down_bf16) } else { None })
             } else {
+                let inter = cfg.moe_intermediate;
                 (get(&format!("{lp}.mlp.gate.weight"), 1),
-                 vec![0.01; 2 * cfg.moe_intermediate * hidden],
-                 vec![0.01; hidden * cfg.moe_intermediate])
+                 vec![0.01; 2 * inter * hidden],
+                 vec![0.01; hidden * inter], 1, None, None, None, None)
             };
-            let num_exp = if cfg.moe.is_some() { cfg.moe.as_ref().unwrap().num_experts } else { 1 };
-            layers.push(crate::engine::layer::DecoderLayer::new_real(
-                i, cfg, attn, router_w, gate_up, down, num_exp));
+            let mut dl = crate::engine::layer::DecoderLayer::new_real(
+                i, cfg, attn, router_w, gate_up, down, num_exp);
+            if let (Some(gu), Some(dn)) = (gate_up_f16, down_f16) {
+                dl.experts.gate_up_f16 = Some(gu);
+                dl.experts.down_f16 = Some(dn);
+            }
+            if let (Some(gu), Some(dn)) = (gate_up_bf16, down_bf16) {
+                dl.experts.gate_up_bf16 = Some(gu);
+                dl.experts.down_bf16 = Some(dn);
+            }
+            layers.push(dl);
         }
         let rope_dim = cfg.rope_dim;
         let inv_freq = crate::core::rope::compute_inv_freq(rope_dim, cfg.rope_theta, 0.5);
@@ -138,6 +195,20 @@ impl Model {
         }
         let h = rms_norm(&h, &self.final_norm_w, self.eps);
         h.matmul(&self.lm_head.transpose())     // (L, vocab)
+    }
+
+    /// 输入末位的隐藏态（final norm 前——投机草稿的 aux 目标隐藏态，镜像 Python draft 的 h_target）。
+    pub fn hidden_state_at_last(&self, input_ids: &[usize]) -> Tensor {
+        let l = input_ids.len();
+        let mut h = self.embed_rows(input_ids);
+        let mask = causal_mask(l);
+        let (cos, sin) = self.cos_sin(l);
+        for layer in &self.layers {
+            h = layer.forward(&h, &cos, &sin, Some(&mask));
+        }
+        // 取最后位置 (1, hidden)——final norm 前的隐藏态（aux 层目标）
+        Tensor::from_vec(1, self.hidden,
+            h.data[(l - 1) * self.hidden..l * self.hidden].to_vec())
     }
 
     /// 取词嵌入行：(len, hidden)。
@@ -212,8 +283,18 @@ impl Model {
     /// 带采样参数的生成（temperature/top_k/top_p——与 Python generate_stream 对齐）。
     pub fn generate_sampled(&self, input_ids: &[usize], max_new_tokens: usize,
                             temperature: f32, top_k: usize, top_p: f32,
-                            _repetition_penalty: f32) -> Vec<usize> {
+                            repetition_penalty: f32) -> Vec<usize> {
+        self.generate_stream_sampled(input_ids, max_new_tokens, temperature,
+                                     top_k, top_p, repetition_penalty, &mut |_tok| {})
+    }
+
+    /// 逐 token 流式生成（镜像 Python generate_stream——每 token 回调一次）。
+    pub fn generate_stream_sampled(&self, input_ids: &[usize], max_new_tokens: usize,
+                                   temperature: f32, top_k: usize, top_p: f32,
+                                   _repetition_penalty: f32,
+                                   on_token: &mut dyn FnMut(usize)) -> Vec<usize> {
         let mut ids = input_ids.to_vec();
+        let mut out = Vec::new();
         for _ in 0..max_new_tokens {
             let logits = self.prefill(&ids);
             let start = (ids.len() - 1) * logits.cols;
@@ -225,8 +306,10 @@ impl Model {
                 crate::engine::sampling::sample_row_p(last, temperature, top_k, top_p, &mut rng)
             };
             ids.push(tok);
+            out.push(tok);
+            on_token(tok);
         }
-        ids[input_ids.len()..].to_vec()
+        out
     }
 
     /// 便捷构造（合成小模型用）：inv_freq 按 rope_dim/theta 生成。

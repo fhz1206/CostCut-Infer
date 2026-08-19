@@ -18,10 +18,10 @@ pub struct TensorMeta {
     pub length: usize,
 }
 
-/// 已打开的 safetensors 文件（惰性读取：仅解析头，张量按需 seek 读取，不整读大分片）。
+/// 已打开的 safetensors 文件集合（惰性读取：仅解析头，张量按需 seek 读取，不整读大分片）。
 pub struct SafeTensors {
-    file: File,
-    pub tensors: HashMap<String, TensorMeta>,
+    files: Vec<File>,
+    pub tensors: HashMap<String, (usize, TensorMeta)>,   // name → (shard 索引, 元数据)
 }
 
 /// 简易 JSON 字段提取：把 `"key": value` 的顶层字段解析为字符串。
@@ -83,86 +83,102 @@ pub fn extract_fields(json: &str) -> HashMap<String, String> {
     out
 }
 
-impl SafeTensors {
-    /// 打开并解析 safetensors 文件。
-    pub fn open(path: &str) -> Result<Self, String> {
-        let mut f = File::open(path).map_err(|e| format!("打开文件失败 {path}: {e}"))?;
-        let mut header_len_buf = [0u8; 8];
-        f.read_exact(&mut header_len_buf).map_err(|e| format!("读取头长度失败: {e}"))?;
-        let header_len = u64::from_le_bytes(header_len_buf) as usize;
-        let mut header_bytes = vec![0u8; header_len];
-        f.read_exact(&mut header_bytes).map_err(|e| format!("读取头失败: {e}"))?;
-        let header_json = String::from_utf8_lossy(&header_bytes).to_string();
-        // 头部是嵌套对象：外层 key = 张量名，值 = 内层对象
-        let mut tensors = HashMap::new();
-        let bytes = header_json.as_bytes();
-        let mut i = 0usize;
-        while i < bytes.len() {
-            if bytes[i] == b'"' {
-                let ks = i + 1;
-                let mut j = ks;
-                while j < bytes.len() && bytes[j] != b'"' {
+/// 解析单 shard 头部：name → TensorMeta（offset 相对该文件数据区起点）。
+fn parse_header(header_json: &str, header_len: usize) -> HashMap<String, TensorMeta> {
+    let mut tensors = HashMap::new();
+    let bytes = header_json.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            let ks = i + 1;
+            let mut j = ks;
+            while j < bytes.len() && bytes[j] != b'"' {
+                j += 1;
+            }
+            let name = header_json[ks..j].to_string();
+            i = j + 1;
+            while i < bytes.len() && (bytes[i].is_ascii_whitespace() || bytes[i] == b':') {
+                i += 1;
+            }
+            if i < bytes.len() && bytes[i] == b'{' {
+                let v0 = i + 1;
+                let mut depth = 1i32;
+                let mut j = i + 1;
+                while j < bytes.len() && depth > 0 {
+                    match bytes[j] {
+                        b'{' => depth += 1,
+                        b'}' => depth -= 1,
+                        _ => {}
+                    }
                     j += 1;
                 }
-                let name = header_json[ks..j].to_string();
-                i = j + 1;
-                while i < bytes.len() && (bytes[i].is_ascii_whitespace() || bytes[i] == b':') {
-                    i += 1;
-                }
-                if i < bytes.len() && bytes[i] == b'{' {
-                    // 提取内层对象的原始文本
-                    let v0 = i + 1;
-                    let mut depth = 1i32;
-                    let mut j = i + 1;
-                    while j < bytes.len() && depth > 0 {
-                        match bytes[j] {
-                            b'{' => depth += 1,
-                            b'}' => depth -= 1,
-                            _ => {}
-                        }
-                        j += 1;
+                let inner = &header_json[v0..j - 1];
+                let fields = extract_fields(inner);
+                if let (Some(dtype), Some(shape_raw), Some(offsets)) =
+                    (fields.get("dtype"), fields.get("shape"), fields.get("data_offsets"))
+                {
+                    let shape: Vec<usize> = shape_raw
+                        .trim_matches(|c| c == '[' || c == ']')
+                        .split(',')
+                        .filter(|s| !s.trim().is_empty())
+                        .map(|s| s.trim().parse().unwrap_or(0))
+                        .collect();
+                    let nums: Vec<usize> = offsets
+                        .trim_matches(|c| c == '[' || c == ']')
+                        .split(',')
+                        .filter(|s| !s.trim().is_empty())
+                        .map(|s| s.trim().parse().unwrap_or(0))
+                        .collect();
+                    if nums.len() == 2 {
+                        let (b, e) = (nums[0], nums[1]);
+                        tensors.insert(name, TensorMeta {
+                            dtype: dtype.clone(),
+                            shape,
+                            offset: 8 + header_len + b,
+                            length: e - b,
+                        });
                     }
-                    let inner = &header_json[v0..j - 1];
-                    let fields = extract_fields(inner);
-                    if let (Some(dtype), Some(shape_raw), Some(offsets)) =
-                        (fields.get("dtype"), fields.get("shape"), fields.get("data_offsets"))
-                    {
-                        let shape: Vec<usize> = shape_raw
-                            .trim_matches(|c| c == '[' || c == ']')
-                            .split(',')
-                            .filter(|s| !s.trim().is_empty())
-                            .map(|s| s.trim().parse().unwrap_or(0))
-                            .collect();
-                        let nums: Vec<usize> = offsets
-                            .trim_matches(|c| c == '[' || c == ']')
-                            .split(',')
-                            .filter(|s| !s.trim().is_empty())
-                            .map(|s| s.trim().parse().unwrap_or(0))
-                            .collect();
-                        if nums.len() == 2 {
-                            let (b, e) = (nums[0], nums[1]);
-                            tensors.insert(name, TensorMeta {
-                                dtype: dtype.clone(),
-                                shape,
-                                offset: 8 + header_len + b,
-                                length: e - b,
-                            });
-                        }
-                    }
-                    i = j;
-                } else {
-                    i += 1;
                 }
+                i = j;
             } else {
                 i += 1;
             }
+        } else {
+            i += 1;
         }
-        Ok(SafeTensors { file: f, tensors })
+    }
+    tensors
+}
+
+impl SafeTensors {
+    /// 打开单个 safetensors 文件。
+    pub fn open(path: &str) -> Result<Self, String> {
+        Self::open_multi(&[path.to_string()])
+    }
+
+    /// 多分片打开：合并各 shard 张量索引（镜像 Python WeightStore——按名跨分片读取）。
+    pub fn open_multi(paths: &[String]) -> Result<Self, String> {
+        let mut files = Vec::with_capacity(paths.len());
+        let mut tensors = HashMap::new();
+        for (si, path) in paths.iter().enumerate() {
+            let mut f = File::open(path).map_err(|e| format!("打开文件失败 {path}: {e}"))?;
+            let mut header_len_buf = [0u8; 8];
+            f.read_exact(&mut header_len_buf).map_err(|e| format!("读取头长度失败: {e}"))?;
+            let header_len = u64::from_le_bytes(header_len_buf) as usize;
+            let mut header_bytes = vec![0u8; header_len];
+            f.read_exact(&mut header_bytes).map_err(|e| format!("读取头失败: {e}"))?;
+            let header_json = String::from_utf8_lossy(&header_bytes).to_string();
+            for (name, meta) in parse_header(&header_json, header_len) {
+                tensors.entry(name).or_insert((si, meta));
+            }
+            files.push(f);
+        }
+        Ok(SafeTensors { files, tensors })
     }
 
     /// 按元数据 seek 读取张量原始字节。
-    fn read_bytes(&self, meta: &TensorMeta) -> Option<Vec<u8>> {
-        let mut f = &self.file;
+    fn read_bytes(&self, si: usize, meta: &TensorMeta) -> Option<Vec<u8>> {
+        let mut f = &self.files[si];
         f.seek(SeekFrom::Start(meta.offset as u64)).ok()?;
         let mut buf = vec![0u8; meta.length];
         f.read_exact(&mut buf).ok()?;
@@ -171,8 +187,8 @@ impl SafeTensors {
 
     /// 读取张量为 f32（I32/F32 直转，F16/BF16 转换）。
     pub fn get_f32(&self, name: &str) -> Option<Vec<f32>> {
-        let meta = self.tensors.get(name)?;
-        let slice = self.read_bytes(meta)?;
+        let (si, meta) = self.tensors.get(name)?;
+        let slice = self.read_bytes(*si, meta)?;
         let out = match meta.dtype.as_str() {
             "F32" => slice.chunks_exact(4)
                 .map(|c| f32::from_le_bytes(c.try_into().unwrap()))
@@ -195,11 +211,11 @@ impl SafeTensors {
 
     /// 读取张量为 i32（qweight/qzeros 用）。
     pub fn get_i32(&self, name: &str) -> Option<Vec<i32>> {
-        let meta = self.tensors.get(name)?;
+        let (si, meta) = self.tensors.get(name)?;
         if meta.dtype != "I32" {
             return None;
         }
-        let slice = self.read_bytes(meta)?;
+        let slice = self.read_bytes(*si, meta)?;
         Some(slice.chunks_exact(4)
             .map(|c| i32::from_le_bytes(c.try_into().unwrap()))
             .collect())

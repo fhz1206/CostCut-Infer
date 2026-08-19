@@ -287,6 +287,143 @@ impl Tensor {
             / self.data.len() as f32;
         var.sqrt()
     }
+
+    /// fp16 权重 matmul（compute_dtype="float16" 路径）：self (m, k) f32 激活 ×
+    /// rhs (k, n) fp16 权重 → (m, n) f32。fp16 数据就地 u16 位型实时转 f32（镜像 Python
+    /// 以 float16 权重计算、输出 f32 的语义——纯 std，无 fp16 硬件指令）。
+    pub fn matmul_f16(&self, rhs_f16: &F16Tensor) -> Tensor {
+        assert_eq!(self.cols, rhs_f16.rows, "matmul_f16 形状不匹配");
+        let (m, k, n) = (self.rows, self.cols, rhs_f16.cols);
+        let mut out = Tensor::zeros(m, n);
+        for i in 0..m {
+            for kk in 0..k {
+                let a = self.get(i, kk);
+                if a == 0.0 {
+                    continue;
+                }
+                let b_row = &rhs_f16.data[kk * n..(kk + 1) * n];
+                for j in 0..n {
+                    out.data[i * n + j] += a * f16_to_f32(b_row[j]);
+                }
+            }
+        }
+        out
+    }
+}
+
+/// fp16 权重张量（u16 位型存储——RFC 7049 / IEEE fp16，行主序）。
+#[derive(Clone, Debug)]
+pub struct F16Tensor {
+    pub rows: usize,
+    pub cols: usize,
+    pub data: Vec<u16>,
+}
+
+impl F16Tensor {
+    /// 从 f32 数据构造（自动转 fp16 位型——compute_dtype="float16" 权重存储）。
+    pub fn from_f32(rows: usize, cols: usize, data: &[f32]) -> Self {
+        F16Tensor {
+            rows,
+            cols,
+            data: data.iter().map(|&v| f32_to_f16(v)).collect(),
+        }
+    }
+
+    /// 访问 (i, j) 元素的 fp16 位型。
+    #[inline]
+    pub fn get(&self, i: usize, j: usize) -> u16 {
+        self.data[i * self.cols + j]
+    }
+}
+
+/// f32 → fp16 位型（IEEE 754 half，与 quant::dequant 的转换函数一致——此处独立实现避免依赖）。
+pub fn f32_to_f16(v: f32) -> u16 {
+    let bits = v.to_bits();
+    let sign = ((bits >> 16) & 0x8000) as u16;
+    let raw_exp = ((bits >> 23) & 0xFF) as i32 - 127;
+    if raw_exp >= 16 {
+        return sign | 0x7C00;   // 溢出 → 无穷
+    }
+    let mant = bits & 0x7FFFFF;
+    let biased = (raw_exp + 15) as i32;
+    if biased <= 0 {
+        return sign | (mant >> 13) as u16;   // 次正规/零
+    }
+    let m = (mant >> 13) as u16;
+    let round = ((mant >> 12) & 1) as u16;
+    sign | ((biased as u16) << 10) | (m + round)
+}
+
+/// fp16 位型 → f32（IEEE 754 half 解码）。
+pub fn f16_to_f32(h: u16) -> f32 {
+    let sign = ((h >> 15) & 1) as f32 * -1.0;
+    let exp = ((h >> 10) & 0x1F) as i32;
+    let mant = (h & 0x3FF) as f32;
+    let v = if exp == 0 {
+        if mant == 0.0 { 0.0 } else { (mant / 1024.0) * (2.0f32).powi(-14) }
+    } else if exp == 31 {
+        if mant == 0.0 { f32::INFINITY } else { f32::NAN }
+    } else {
+        (1.0 + mant / 1024.0) * (2.0f32).powi(exp - 15)
+    };
+    if sign < 0.0 { -v } else { v }
+}
+
+/// bf16 权重张量（u16 位型存储——IEEE bfloat16，行主序）。
+#[derive(Clone, Debug)]
+pub struct BF16Tensor {
+    pub rows: usize,
+    pub cols: usize,
+    pub data: Vec<u16>,
+}
+
+impl BF16Tensor {
+    /// 从 f32 数据构造（自动转 bf16 位型——compute_dtype="bf16" 权重存储）。
+    pub fn from_f32(rows: usize, cols: usize, data: &[f32]) -> Self {
+        BF16Tensor {
+            rows,
+            cols,
+            data: data.iter().map(|&v| f32_to_bf16(v)).collect(),
+        }
+    }
+
+    /// 访问 (i, j) 元素的 bf16 位型。
+    #[inline]
+    pub fn get(&self, i: usize, j: usize) -> u16 {
+        self.data[i * self.cols + j]
+    }
+}
+
+impl Tensor {
+    /// bf16 权重 matmul（compute_dtype="bf16" 路径）：f32 激活 × bf16 权重 → f32。
+    pub fn matmul_bf16(&self, rhs_bf16: &BF16Tensor) -> Tensor {
+        assert_eq!(self.cols, rhs_bf16.rows, "matmul_bf16 形状不匹配");
+        let (m, k, n) = (self.rows, self.cols, rhs_bf16.cols);
+        let mut out = Tensor::zeros(m, n);
+        for i in 0..m {
+            for kk in 0..k {
+                let a = self.get(i, kk);
+                if a == 0.0 {
+                    continue;
+                }
+                let b_row = &rhs_bf16.data[kk * n..(kk + 1) * n];
+                for j in 0..n {
+                    out.data[i * n + j] += a * bf16_to_f32(b_row[j]);
+                }
+            }
+        }
+        out
+    }
+}
+
+/// f32 → bf16 位型（取高 16 位——bfloat16 尾数截断）。
+pub fn f32_to_bf16(v: f32) -> u16 {
+    (v.to_bits() >> 16) as u16
+}
+
+/// bf16 位型 → f32（高 16 位左移回）。
+pub fn bf16_to_f32(b: u16) -> f32 {
+    f32::from_bits((b as u32) << 16)
 }
 
 #[cfg(test)]

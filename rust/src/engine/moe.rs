@@ -2,7 +2,7 @@
 //!
 //! 权重格式（Mixtral / Qwen3-MoE / GLM）：`gate_up_proj` [E, 2*inter, hidden] +
 //! `down_proj` [E, hidden, inter]，标准 [out, in] 序。
-use crate::core::tensor::Tensor;
+use crate::core::tensor::{BF16Tensor, F16Tensor, Tensor};
 
 /// Top-K 路由：linear → softmax(fp32) → topk → 归一化。
 pub struct TopKRouter {
@@ -40,6 +40,10 @@ pub struct MergedExperts {
     pub hidden: usize,
     pub gate_up: Vec<f32>,   // [E, 2*inter, hidden]
     pub down: Vec<f32>,      // [E, hidden, inter]
+    pub gate_up_f16: Option<Vec<F16Tensor>>,   // compute_dtype="float16" 权重（可选）
+    pub down_f16: Option<Vec<F16Tensor>>,
+    pub gate_up_bf16: Option<Vec<BF16Tensor>>,  // compute_dtype="bf16" 权重（可选）
+    pub down_bf16: Option<Vec<BF16Tensor>>,
 }
 
 impl MergedExperts {
@@ -49,17 +53,28 @@ impl MergedExperts {
         let gu_elems = 2 * self.intermediate * self.hidden;
         let down_elems = self.hidden * self.intermediate;
         let mut final_out = Tensor::zeros(x.rows, self.hidden);
+        let use_f16 = self.gate_up_f16.is_some();
+        let use_bf16 = self.gate_up_bf16.is_some();
         for i in 0..x.rows {
             let mut acc = vec![0.0f32; self.hidden];
             for k in 0..weights.cols {
                 let e = indices[i][k];
                 let w = weights.get(i, k);
-                let gu = Tensor::from_vec(
-                    2 * self.intermediate, self.hidden,
-                    self.gate_up[e * gu_elems..(e + 1) * gu_elems].to_vec());
-                // 单 token 行：x 的第 i 行 → (1, hidden)
                 let xi = row_tensor(x, i);
-                let fused = xi.matmul(&gu.transpose());                       // (1, 2*inter)
+                let fused = if use_f16 {
+                    // fp16 权重路径（compute_dtype="float16"）
+                    let gu_f16 = &self.gate_up_f16.as_ref().unwrap()[e];
+                    xi.matmul_f16(gu_f16)                          // (1, 2*inter)
+                } else if use_bf16 {
+                    // bf16 权重路径（compute_dtype="bf16"）
+                    let gu_bf16 = &self.gate_up_bf16.as_ref().unwrap()[e];
+                    xi.matmul_bf16(gu_bf16)
+                } else {
+                    let gu = Tensor::from_vec(
+                        2 * self.intermediate, self.hidden,
+                        self.gate_up[e * gu_elems..(e + 1) * gu_elems].to_vec());
+                    xi.matmul(&gu.transpose())
+                };
                 let mut gate = vec![0.0f32; self.intermediate];
                 let mut up = vec![0.0f32; self.intermediate];
                 for j in 0..self.intermediate {
@@ -68,10 +83,18 @@ impl MergedExperts {
                 }
                 let h = Tensor::from_vec(1, self.intermediate, gate).silu()
                     .elementwise_mul(&Tensor::from_vec(1, self.intermediate, up));
-                let down_m = Tensor::from_vec(
-                    self.hidden, self.intermediate,
-                    self.down[e * down_elems..(e + 1) * down_elems].to_vec());
-                let out_e = h.matmul(&down_m.transpose());                    // (1, hidden)
+                let out_e = if use_f16 {
+                    let down_f16 = &self.down_f16.as_ref().unwrap()[e];
+                    h.matmul_f16(down_f16)                          // (1, hidden)
+                } else if use_bf16 {
+                    let down_bf16 = &self.down_bf16.as_ref().unwrap()[e];
+                    h.matmul_bf16(down_bf16)
+                } else {
+                    let down_m = Tensor::from_vec(
+                        self.hidden, self.intermediate,
+                        self.down[e * down_elems..(e + 1) * down_elems].to_vec());
+                    h.matmul(&down_m.transpose())
+                };
                 for j in 0..self.hidden {
                     acc[j] += out_e.get(0, j) * w;
                 }

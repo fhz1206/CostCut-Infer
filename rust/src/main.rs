@@ -14,6 +14,9 @@ use io::safetensors::SafeTensors;
 use std::time::Instant;
 use core::tensor::Tensor;
 
+/// 当前默认模型名（多模型切换注册表为后续）。
+const CURRENT_MODEL: &str = "Qwen3.6-35B-A3B-AWQ-4bit";
+
 /// 合成小模型（1 层 Mixtral 风格：hidden 32 / 4 头 / 2 KV / 8 专家 / vocab 64）。
 fn synthetic_model() -> engine::model::Model {
     let (hidden, h, kvh, hd) = (32usize, 4usize, 2usize, 8usize);
@@ -45,6 +48,10 @@ fn synthetic_model() -> engine::model::Model {
             hidden,
             gate_up: vec![0.05; e * 2 * inter * hidden],
             down: vec![0.05; e * hidden * inter],
+            gate_up_f16: None,
+            down_f16: None,
+            gate_up_bf16: None,
+            down_bf16: None,
         },
         shared: None,
         dense_mlp: None,
@@ -72,11 +79,15 @@ fn main() {
 fn run_smoke() {
     println!("[dev] CostCut Infer 冒烟（--smoke：加载/反量化/前向/生成/并行 matmul）");
 
-    // M1 冒烟：加载真实模型（Qwen3.6-35B-A3B-AWQ-4bit）专家 0 的 gate_proj 权重
-    let shard = "../python/models/Qwen3.6-35B-A3B-AWQ-4bit/model-00001-of-00006.safetensors";
+    // M1 冒烟：多分片加载真实模型（Qwen3.6-35B-A3B-AWQ-4bit——6 shard）专家 0 的 gate_proj 权重
+    let dir = "../python/models/Qwen3.6-35B-A3B-AWQ-4bit";
     let prefix = "model.language_model.layers.0.mlp.experts.0.gate_proj";
-    match SafeTensors::open(shard) {
+    let paths: Vec<String> = (1..=6)
+        .map(|i| format!("{dir}/model-{i:05}-of-00006.safetensors"))
+        .collect();
+    match SafeTensors::open_multi(&paths) {
         Ok(st) => {
+            println!("[M1] 多分片打开成功——张量索引 {} 项（跨 6 shard）", st.tensors.len());
             let qw = st.get_i32(&format!("{prefix}.qweight"));
             let qz = st.get_i32(&format!("{prefix}.qzeros"));
             let sc = st.get_f32(&format!("{prefix}.scales"));
@@ -91,6 +102,24 @@ fn run_smoke() {
                 }
                 _ => println!("[M1] 张量读取失败"),
             }
+            // from_real 权重前缀读取验证（embed/lm_head/norm + 专家 gate/up/down——快速）
+            let mp = "model.language_model";
+            let wp = "model.language_model.layers.0.mlp.experts.0";
+            let mut hit = 0usize;
+            let mut total = 0usize;
+            for (name, ok) in [
+                ("embed", st.get_f32(&format!("{mp}.embed_tokens.weight")).is_some()),
+                ("lm_head", st.get_f32("lm_head.weight").is_some()),   // 顶层（无前缀）
+                ("norm", st.get_f32(&format!("{mp}.norm.weight")).is_some()),
+                ("gate_proj", st.get_i32(&format!("{wp}.gate_proj.qweight")).is_some()),
+                ("up_proj", st.get_i32(&format!("{wp}.up_proj.qweight")).is_some()),
+                ("down_proj", st.get_i32(&format!("{wp}.down_proj.qweight")).is_some()),
+            ] {
+                total += 1;
+                if ok { hit += 1; }
+                if !ok { println!("[M1] 权重缺失: {name}"); }
+            }
+            println!("[M1] from_real 权重前缀验证：{hit}/{total} 命中（embed/lm_head/norm/专家投影）");
         }
         Err(e) => println!("[M1] safetensors 打开失败: {e}"),
     }
@@ -160,6 +189,24 @@ fn run_smoke() {
              t2s, t_fused, same_i);
 }
 
+/// 加载真实 DSpark 草稿模型（speculator.dspark safetensors + 主模型 embed）——投机路径用。
+/// 加载失败返回 None（回退简化 Markov 草稿）。
+fn load_draft_model(m: &engine::model::Model) -> Option<engine::speculator::DraftModel> {
+    let dir = "../python/models/Qwen3.6-35B-A3B-speculator.dspark";
+    let path = format!("{dir}/model.safetensors");
+    let store = match SafeTensors::open(&path) {
+        Ok(s) => s,
+        Err(_) => return None,
+    };
+    let hidden = m.hidden;
+    let vocab = m.embed.rows;
+    let embed_main = &m.embed.data;
+    match engine::speculator::DraftModel::from_dspark(&store, embed_main, vocab, hidden) {
+        Ok(dm) => Some(dm),
+        Err(_) => None,
+    }
+}
+
 /// 默认入口：交互式 CLI（与 Python cli_chat 输出格式一致——横幅/You:/Assistant:）。
 fn run_cli() {
     use std::io::Write;
@@ -178,6 +225,18 @@ fn run_cli() {
         }
     };
     let m = synthetic_model();   // 真实模型组装（from_real）接入为后续
+    let mut history: Vec<usize> = Vec::new();   // 多轮上下文（ids 累积——简化；封顶 512）
+    // engine.toml 配置化（[inference] 四开关 + 生成参数——镜像 Python cli_chat）
+    let cfg = crate::io::config::load_engine_toml();
+    let mut speculate_on = cfg.get_bool("inference", "speculate");   // /speculate 开关（默认取配置）
+    let temp = cfg.get_f32("inference", "temperature", 0.9);
+    let top_p = cfg.get_f32("inference", "top_p", 0.9);
+    let top_k = cfg.get_int("inference", "top_k", 0) as usize;
+    let max_new = cfg.get_int("inference", "max_new_tokens", 2048).min(64) as usize;
+    let _spec_enabled = cfg.get("model", "dspark_model").map_or(false, |v| !v.is_empty());
+    let mut spec = crate::engine::speculator::MarkovSpeculator::new();
+    // 真实草稿模型（DSpark）——接入投机路径（draft_forward 替代简化 Markov）
+    let draft = load_draft_model(&m);
     loop {
         print!("\nYou: ");
         let _ = std::io::stdout().flush();
@@ -186,18 +245,120 @@ fn run_cli() {
             break;
         }
         let line = line.trim().to_string();
-        if line == "/exit" || line == "/quit" || line == "q" || line == "exit" {
-            break;
+        if line.starts_with('/') {
+            // 命令处理（镜像 Python cli_chat：/help /model /models /clear /speculate /exit）
+            let mut parts = line.splitn(2, ' ');
+            let cmd = parts.next().unwrap_or("").to_lowercase();
+            let arg = parts.next().unwrap_or("").trim().to_string();
+            match cmd.as_str() {
+                "/help" => {
+                    println!("==================================================");
+                    println!("Commands:");
+                    println!("  /help           Show this help message");
+                    println!("  /model [name]   Switch to a different model");
+                    println!("  /models         List available models");
+                    println!("  /clear          Clear conversation history");
+                    println!("  /speculate      Toggle speculative decoding");
+                    println!("  /exit, /quit    Exit the application");
+                    println!("==================================================");
+                }
+                "/model" => {
+                    if arg.is_empty() {
+                        println!("Current Model: {}", CURRENT_MODEL);
+                    } else {
+                        // 多模型注册表占位——当前支持单一模型
+                        println!("[System] 可切换模型：Qwen3.6-35B-A3B-AWQ-4bit（当前默认）——",
+                                 );
+                        println!("        多模型真实切换（from_real）为后续");
+                    }
+                }
+                "/models" => println!("Available: Qwen3.6-35B-A3B-AWQ-4bit"),
+                "/clear" => {
+                    history.clear();
+                    println!("[System] 历史已清空");
+                }
+                "/speculate" => {
+                    speculate_on = !speculate_on;
+                    println!("[System] 投机解码：{}（Markov 草稿）",
+                             if speculate_on { "已启用" } else { "已禁用" });
+                }
+                "/exit" | "/quit" => break,
+                _ => println!("[Error] Unknown command: {cmd}（/help 查看帮助）"),
+            }
+            continue;
         }
         if line.is_empty() {
             continue;
         }
         // 文本 → token ids（合成模型 vocab 64——id 取模钳制；真实模型接入后无需钳制）
         let ids: Vec<usize> = tok.encode(&line).iter().map(|&t| t % 64).collect();
+        history.extend(ids);
+        if history.len() > 512 {
+            history.drain(0..history.len() - 512);   // 封顶——丢弃最旧
+        }
         print!("\nAssistant: ");
         let _ = std::io::stdout().flush();
-        let gen = m.generate_sampled(&ids, 16, 0.9, 0, 0.9, 1.0);
-        println!("{}", tok.decode(&gen));
+        // 流式输出（镜像 Python generate_stream——逐 token 打印增量）
+        let mut gen_ids: Vec<usize> = Vec::new();
+        let mut text = String::new();
+        let mut emit = |tid: usize, gen_ids: &mut Vec<usize>, text: &mut String| {
+            gen_ids.push(tid);
+            let new_text = tok.decode(gen_ids);
+            if new_text.len() > text.len() {
+                print!("{}", &new_text[text.len()..]);
+                let _ = std::io::stdout().flush();
+                *text = new_text;
+            }
+        };
+        if speculate_on {
+            // 投机路径：真实草稿模型（DraftModel.draft_forward）草稿 + 主模型验证
+            if let Some(dm) = &draft {
+                // 从主模型 aux 隐藏态草稿 n 个 token（h_target = final norm 前的末位隐藏态）
+                let h_target = m.hidden_state_at_last(&history);
+                let draft_ids = dm.draft_forward(&h_target, 4);
+                // 草稿 + 主模型验证接受（贪心 argmax 语义）
+                let mut trial = history.clone();
+                trial.extend(&draft_ids);
+                let logits = m.prefill(&trial);
+                let mut accepted = 0usize;
+                for (k, &d) in draft_ids.iter().enumerate() {
+                    let pos = history.len() + k;
+                    let start = (pos - 1) * logits.cols;
+                    let tok = crate::engine::sampling::argmax_row(
+                        &logits.data[start..start + logits.cols]);
+                    if tok == d { accepted += 1; } else { break; }
+                }
+                let mut gen = draft_ids[..accepted].to_vec();
+                // 剩余空间用主模型继续
+                let rem = max_new.saturating_sub(gen.len());
+                if rem > 0 {
+                    let mut tail = history.clone();
+                    tail.extend(&draft_ids[..accepted]);
+                    let rest = m.generate_sampled(&tail, rem, temp, top_k, top_p, 1.0);
+                    gen.extend(rest);
+                }
+                println!("{}", tok.decode(&gen));
+                gen_ids = gen;
+                text = tok.decode(&gen_ids);
+            } else {
+                // 回退：Markov 草稿 + 主模型验证
+                spec.observe(&history);
+                let gen = spec.generate_speculative(&m, &history, 4, max_new);
+                println!("{}", tok.decode(&gen));
+                gen_ids = gen;
+                text = tok.decode(&gen_ids);
+            }
+        } else {
+            m.generate_stream_sampled(&history, max_new, temp, top_k, top_p, 1.0,
+                                      &mut |tid| emit(tid, &mut gen_ids, &mut text));
+            println!();
+        }
+        // 结果纳入历史
+        let gen_out: Vec<usize> = gen_ids.iter().map(|&t| t % 64).collect();
+        history.extend(gen_out);
+        if history.len() > 512 {
+            history.drain(0..history.len() - 512);
+        }
     }
     println!();
 }
