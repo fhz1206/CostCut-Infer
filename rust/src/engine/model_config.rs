@@ -56,7 +56,31 @@ fn fnum(fields: &HashMap<String, String>, key: &str, default: f32) -> f32 {
 pub fn load_model_config(model_dir: &str) -> Result<ModelConfig, String> {
     let text = fs::read_to_string(format!("{model_dir}/config.json"))
         .map_err(|e| format!("读取 config.json 失败: {e}"))?;
-    let fields = extract_fields(&text);
+    let mut fields = extract_fields(&text);
+    // Qwen3.5 等嵌套结构：核心字段在 text_config 子对象下——提取并合并到顶层
+    if num(&fields, "hidden_size", 0) == 0 {
+        if let Some(start) = text.find("\"text_config\"") {
+            if let Some(open) = text[start..].find('{') {
+                let open = start + open;
+                let mut depth = 1i32;
+                let mut close = open + 1;
+                while close < text.len() && depth > 0 {
+                    match text.as_bytes()[close] {
+                        b'{' => depth += 1,
+                        b'}' => depth -= 1,
+                        _ => {}
+                    }
+                    close += 1;
+                }
+                if depth == 0 {
+                    let inner = extract_fields(&text[open + 1..close - 1]);
+                    for (k, v) in inner {
+                        fields.entry(k).or_insert(v);
+                    }
+                }
+            }
+        }
+    }
     let raw = text.to_lowercase();
     let hidden = num(&fields, "hidden_size", 0);
     let n_layers = num(&fields, "num_hidden_layers", 0);

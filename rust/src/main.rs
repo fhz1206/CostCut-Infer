@@ -80,7 +80,7 @@ fn run_smoke() {
     println!("[dev] CostCut Infer 冒烟（--smoke：加载/反量化/前向/生成/并行 matmul）");
 
     // M1 冒烟：多分片加载真实模型（Qwen3.6-35B-A3B-AWQ-4bit——6 shard）专家 0 的 gate_proj 权重
-    let dir = "../python/models/Qwen3.6-35B-A3B-AWQ-4bit";
+    let dir = model_dir("Qwen3.6-35B-A3B-AWQ-4bit");
     let prefix = "model.language_model.layers.0.mlp.experts.0.gate_proj";
     let paths: Vec<String> = (1..=6)
         .map(|i| format!("{dir}/model-{i:05}-of-00006.safetensors"))
@@ -122,6 +122,32 @@ fn run_smoke() {
             println!("[M1] from_real 权重前缀验证：{hit}/{total} 命中（embed/lm_head/norm/专家投影）");
         }
         Err(e) => println!("[M1] safetensors 打开失败: {e}"),
+    }
+
+    // M5 冒烟：from_real 真实模型浅层构造 + 前向（截断 1 层——避免完整 61 层标量反量化耗时）
+    println!("=== M5 from_real 真实模型浅层冒烟（截断 1 层）===");
+    let dir5 = model_dir("Qwen3.6-35B-A3B-AWQ-4bit");
+    match crate::engine::model_config::load_model_config(&dir5) {
+        Ok(cfg5) => {
+            let paths5: Vec<String> = (1..=6)
+                .map(|i| format!("{dir5}/model-{i:05}-of-00006.safetensors"))
+                .collect();
+            if let Ok(st5) = SafeTensors::open_multi(&paths5) {
+                match engine::model::Model::from_real_truncated(&st5, &cfg5, 1) {
+                    Ok(m5) => {
+                        let ids = [1usize, 2, 3];
+                        let logits = m5.prefill(&ids);
+                        println!("[M5] from_real 截断模型 prefill: {}x{} finite={}",
+                                 logits.rows, logits.cols,
+                                 logits.data.iter().all(|v| v.is_finite()));
+                    }
+                    Err(e) => println!("[M5] from_real 构造失败: {e}"),
+                }
+            } else {
+                println!("[M5] safetensors 打开失败");
+            }
+        }
+        Err(e) => println!("[M5] 配置加载失败: {e}"),
     }
 
     // M2-M3 冒烟：合成小模型前向 + 贪心生成
@@ -189,10 +215,21 @@ fn run_smoke() {
              t2s, t_fused, same_i);
 }
 
+/// 解析模型目录（CWD 容忍——rust/ 或项目根 CWD 均可，镜像 Python 的 python/models 归一化）。
+fn model_dir(name: &str) -> String {
+    for cand in [format!("../python/models/{name}"), format!("python/models/{name}"),
+                 format!("../../python/models/{name}")] {
+        if std::path::Path::new(&cand).exists() {
+            return cand;
+        }
+    }
+    format!("../python/models/{name}")
+}
+
 /// 加载真实 DSpark 草稿模型（speculator.dspark safetensors + 主模型 embed）——投机路径用。
 /// 加载失败返回 None（回退简化 Markov 草稿）。
 fn load_draft_model(m: &engine::model::Model) -> Option<engine::speculator::DraftModel> {
-    let dir = "../python/models/Qwen3.6-35B-A3B-speculator.dspark";
+    let dir = model_dir("Qwen3.6-35B-A3B-speculator.dspark");
     let path = format!("{dir}/model.safetensors");
     let store = match SafeTensors::open(&path) {
         Ok(s) => s,
@@ -207,6 +244,19 @@ fn load_draft_model(m: &engine::model::Model) -> Option<engine::speculator::Draf
     }
 }
 
+/// 历史文件加载（简易 JSON 数组 "[1,2,3]"——镜像 Python [chat].history_file 语义）。
+fn load_history_file(path: &str) -> Vec<usize> {
+    let Ok(text) = std::fs::read_to_string(path) else { return vec![]; };
+    let t = text.trim().trim_start_matches('[').trim_end_matches(']');
+    t.split(',').filter_map(|s| s.trim().parse().ok()).collect()
+}
+
+/// 历史文件保存（简易 JSON 数组）。
+fn save_history_file(path: &str, ids: &[usize]) {
+    let body = ids.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(",");
+    let _ = std::fs::write(path, format!("[{body}]"));
+}
+
 /// 默认入口：交互式 CLI（与 Python cli_chat 输出格式一致——横幅/You:/Assistant:）。
 fn run_cli() {
     use std::io::Write;
@@ -216,8 +266,7 @@ fn run_cli() {
     println!("Default Model: Qwen3.6-35B-A3B-AWQ-4bit");
     println!("{}", "=".repeat(50));
     println!("[System] 投机解码：已禁用（标准自回归）");
-    let tok = match crate::io::tokenizer::Tokenizer::load(
-        "../python/models/Qwen3.6-35B-A3B-AWQ-4bit") {
+    let tok = match crate::io::tokenizer::Tokenizer::load(&model_dir("Qwen3.6-35B-A3B-AWQ-4bit")) {
         Ok(t) => t,
         Err(e) => {
             println!("[System] tokenizer 加载失败: {e}");
@@ -225,9 +274,13 @@ fn run_cli() {
         }
     };
     let m = synthetic_model();   // 真实模型组装（from_real）接入为后续
-    let mut history: Vec<usize> = Vec::new();   // 多轮上下文（ids 累积——简化；封顶 512）
-    // engine.toml 配置化（[inference] 四开关 + 生成参数——镜像 Python cli_chat）
+    // engine.toml 配置化（[inference] 四开关 + 生成参数 + [chat] 历史——镜像 Python cli_chat）
     let cfg = crate::io::config::load_engine_toml();
+    let auto_save = cfg.get_bool("chat", "auto_save_history");
+    let hist_file = cfg.get("chat", "history_file").unwrap_or(".chat_history.json").to_string();
+    let mut history: Vec<usize> = if auto_save { load_history_file(&hist_file) } else { Vec::new() };
+    let mut current_model = CURRENT_MODEL.to_string();   // /model 切换的当前模型（from_real 多模型接入为后续）
+    // 多轮上下文（ids 累积——简化；封顶 512；auto_save 时从文件加载）
     let mut speculate_on = cfg.get_bool("inference", "speculate");   // /speculate 开关（默认取配置）
     let temp = cfg.get_f32("inference", "temperature", 0.9);
     let top_p = cfg.get_f32("inference", "top_p", 0.9);
@@ -264,22 +317,41 @@ fn run_cli() {
                 }
                 "/model" => {
                     if arg.is_empty() {
-                        println!("Current Model: {}", CURRENT_MODEL);
+                        println!("Current Model: {current_model}");
                     } else {
-                        // 多模型注册表占位——当前支持单一模型
-                        println!("[System] 可切换模型：Qwen3.6-35B-A3B-AWQ-4bit（当前默认）——",
-                                 );
-                        println!("        多模型真实切换（from_real）为后续");
+                        let models = cfg.models();
+                        if models.iter().any(|n| n == &arg) {
+                            current_model = arg.clone();
+                            history.clear();
+                            if auto_save {
+                                save_history_file(&hist_file, &history);
+                            }
+                            println!("[System] 已切换到模型: {current_model}");
+                        } else {
+                            println!("[Error] 未知模型: {arg}（/models 查看）");
+                        }
                     }
                 }
-                "/models" => println!("Available: Qwen3.6-35B-A3B-AWQ-4bit"),
+                "/models" => {
+                    let models = cfg.models();
+                    let list = if models.is_empty() {
+                        CURRENT_MODEL.to_string()
+                    } else {
+                        models.join(", ")
+                    };
+                    println!("Available: {list}");
+                }
                 "/clear" => {
                     history.clear();
+                    if auto_save {
+                        save_history_file(&hist_file, &history);
+                    }
                     println!("[System] 历史已清空");
                 }
                 "/speculate" => {
                     speculate_on = !speculate_on;
-                    println!("[System] 投机解码：{}（Markov 草稿）",
+                    let kind = if draft.is_some() { "dspark 草稿" } else { "Markov 草稿" };
+                    println!("[System] 投机解码：{}（{kind}）",
                              if speculate_on { "已启用" } else { "已禁用" });
                 }
                 "/exit" | "/quit" => break,
@@ -358,6 +430,9 @@ fn run_cli() {
         history.extend(gen_out);
         if history.len() > 512 {
             history.drain(0..history.len() - 512);
+        }
+        if auto_save {
+            save_history_file(&hist_file, &history);
         }
     }
     println!();

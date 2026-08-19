@@ -25,9 +25,16 @@ impl Model {
     /// 权重前缀（embed/layers/norm/lm_head）由配置的 weight_prefix 推导。
     pub fn from_real(store: &crate::io::safetensors::SafeTensors,
                      cfg: &crate::engine::model_config::ModelConfig) -> Result<Model, String> {
+        Self::from_real_truncated(store, cfg, cfg.num_layers)
+    }
+
+    /// 截断构造（浅层冒烟用——限制层数避免完整 61 层标量反量化的小时级耗时）。
+    pub fn from_real_truncated(store: &crate::io::safetensors::SafeTensors,
+                               cfg: &crate::engine::model_config::ModelConfig,
+                               max_layers: usize) -> Result<Model, String> {
         let hidden = cfg.hidden_size;
         let vocab = cfg.vocab_size;
-        let n = cfg.num_layers;
+        let n = cfg.num_layers.min(max_layers);
         let prefix = cfg.weight_prefix.clone();   // 如 "model" 或 "model.language_model"
         let get = |name: &str, out: usize| -> Tensor {
             Tensor::from_vec(out, hidden,

@@ -35,8 +35,12 @@ class ModelConfig:
 
     @property
     def model_dir(self) -> str:
-        """模型实际目录：path 未指定时默认 models/<name>。"""
-        return self.path or f"models/{self.name}"
+        """模型实际目录：统一到 python/models 前缀（models 目录位于 python/ 下）。
+        兼容旧写法（path="models/<name>" 自动归一化为 python/models/<name>）。"""
+        p = self.path or f"python/models/{self.name}"
+        if p.startswith("models/") and not p.startswith("python/models/"):
+            p = f"python/{p}"
+        return p
 
     @property
     def dspark_model_dir(self) -> str:

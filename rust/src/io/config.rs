@@ -12,6 +12,7 @@ use std::path::Path;
 #[derive(Default)]
 pub struct TomlConfig {
     data: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
+    model_entries: Vec<(String, String)>,   // [model] 多块（name, path）——镜像 Python 模型列表
 }
 
 impl TomlConfig {
@@ -27,21 +28,43 @@ impl TomlConfig {
     /// 从文本解析。
     pub fn parse(&mut self, text: &str) {
         let mut section = String::new();
+        let mut cur_model: Option<(String, String)> = None;
         for raw in text.lines() {
             let line = strip_comment(raw).trim().to_string();
             if line.is_empty() {
                 continue;
             }
             if line.starts_with('[') && line.ends_with(']') {
+                // 提交当前 [model] 块（多块收集）
+                if section == "model" {
+                    if let Some(m) = cur_model.take() {
+                        self.model_entries.push(m);
+                    }
+                }
                 section = line[1..line.len() - 1].trim().to_string();
                 continue;
             }
             if let Some(eq) = line.find('=') {
                 let key = line[..eq].trim().to_string();
                 let val = line[eq + 1..].trim().trim_matches('"').trim().to_string();
-                self.data.entry(section.clone()).or_default().insert(key, val);
+                self.data.entry(section.clone()).or_default().insert(key.clone(), val.clone());
+                if section == "model" {
+                    let m = cur_model.get_or_insert((String::new(), String::new()));
+                    if key == "name" { m.0 = val; }
+                    else if key == "path" { m.1 = val; }
+                }
             }
         }
+        if section == "model" {
+            if let Some(m) = cur_model.take() {
+                self.model_entries.push(m);
+            }
+        }
+    }
+
+    /// 已注册的模型名列表（[model] 多块）。
+    pub fn models(&self) -> Vec<String> {
+        self.model_entries.iter().map(|(n, _)| n.clone()).filter(|n| !n.is_empty()).collect()
     }
 
     /// 取字符串值。
@@ -85,7 +108,7 @@ fn strip_comment(line: &str) -> &str {
 
 /// 便捷：解析 engine.toml（依次尝试常见位置——Rust 版 CWD：rust/ 或项目根或 python/）。
 pub fn load_engine_toml() -> TomlConfig {
-    for cand in ["engine.toml", "rust/src/engine.toml", "python/engine.toml"] {
+    for cand in ["engine.toml", "rust/src/engine.toml", "src/engine.toml", "python/engine.toml"] {
         if Path::new(cand).exists() {
             return TomlConfig::load(cand);
         }
