@@ -14,8 +14,8 @@ from torch.nn.functional import conv1d, linear, pad, silu, softplus
 
 from liteengine.cache import kv_append
 from liteengine.moe import torch_weight
-from liteengine.norm import rms_norm, rms_norm_gated
-from liteengine.rope import apply_rotary_pos_emb
+from liteengine.core.norm import rms_norm, rms_norm_gated
+from liteengine.core.rope import apply_rotary_pos_emb
 
 __all__ = ["FullAttention", "GatedDeltaNet", "StandardAttention", "MlaAttention",
            "chunk_gated_delta_rule", "recurrent_gated_delta_rule"]

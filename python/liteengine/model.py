@@ -15,9 +15,9 @@ from torch.nn.functional import linear
 from liteengine.cache import Cache, ExpertCache
 from liteengine.layer import DecoderLayer
 from liteengine.moe import torch_weight
-from liteengine.norm import rms_norm
+from liteengine.core.norm import rms_norm
 from liteengine.quant import QuantConfig, load_quant_config
-from liteengine.rope import compute_inv_freq, rotary_embeddings
+from liteengine.core.rope import compute_inv_freq, rotary_embeddings
 from liteengine.sampling import sample_token
 
 __all__ = ["Qwen3_5MoeModel", "load_text_config", "causal_mask"]

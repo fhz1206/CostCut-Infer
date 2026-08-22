@@ -19,8 +19,8 @@ from torch.nn.functional import linear, silu, softmax
 
 from liteengine.loader import WeightStore
 from liteengine.moe import torch_weight
-from liteengine.norm import rms_norm
-from liteengine.rope import apply_rotary_pos_emb, compute_inv_freq, rotary_embeddings
+from liteengine.core.norm import rms_norm
+from liteengine.core.rope import apply_rotary_pos_emb, compute_inv_freq, rotary_embeddings
 
 __all__ = ["DSparkSpeculator"]
 

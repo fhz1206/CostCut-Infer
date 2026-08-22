@@ -78,16 +78,21 @@ impl Tensor {
                 }
             });
         } else {
+            // 分块优化（参考 llama.cpp——kk 外层分块提升缓存局部性；m=1 时即 lm_head 的 (1,k)@(k,大n)）
+            const BK: usize = 512;   // kk 分块大小
             for i in 0..m {
-                for kk in 0..k {
-                    let a = self.get(i, kk);
-                    if a == 0.0 {
-                        continue;
-                    }
-                    let row = i * n;
-                    let b_row = kk * n;
-                    for j in 0..n {
-                        out.data[row + j] += a * rhs.data[b_row + j];
+                for k0 in (0..k).step_by(BK) {
+                    let k1 = (k0 + BK).min(k);
+                    for kk in k0..k1 {
+                        let a = self.get(i, kk);
+                        if a == 0.0 {
+                            continue;
+                        }
+                        let row = i * n;
+                        let b_row = kk * n;
+                        for j in 0..n {
+                            out.data[row + j] += a * rhs.data[b_row + j];
+                        }
                     }
                 }
             }

@@ -10,7 +10,7 @@ from torch import Tensor
 
 import liteengine.attention  # noqa: F401  触发注意力构建器注册（layer 经 registry 分发）
 from liteengine.moe import DenseBlock, MLP, SparseMoeBlock, TopKRouter, torch_weight
-from liteengine.norm import rms_norm, rms_norm_add
+from liteengine.core.norm import rms_norm, rms_norm_add
 from liteengine.registry import get_attention, get_moe_format, list_attentions, list_moe_formats
 
 __all__ = ["DecoderLayer"]

@@ -26,9 +26,9 @@ from liteengine.layer import DecoderLayer
 from liteengine.loader import WeightStore
 from liteengine.model import causal_mask, load_text_config
 from liteengine.moe import MLP, QuantizedExperts, SparseMoeBlock, TopKRouter
-from liteengine.norm import rms_norm, rms_norm_gated
+from liteengine.core.norm import rms_norm, rms_norm_gated
 from liteengine.quant import dequantize_awq
-from liteengine.rope import apply_rotary_pos_emb, compute_inv_freq, rotary_embeddings
+from liteengine.core.rope import apply_rotary_pos_emb, compute_inv_freq, rotary_embeddings
 
 MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
 

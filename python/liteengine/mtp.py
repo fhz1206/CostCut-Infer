@@ -13,7 +13,7 @@ from torch.nn.functional import linear
 from liteengine.layer import DecoderLayer
 from liteengine.loader import WeightStore
 from liteengine.moe import torch_weight
-from liteengine.norm import rms_norm
+from liteengine.core.norm import rms_norm
 
 __all__ = ["MtpModule"]
 
