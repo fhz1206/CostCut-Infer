@@ -122,10 +122,13 @@ impl MarkovSpeculator {
         let mut ids = input.to_vec();
         let mut out = Vec::new();
         let greedy = temperature <= 0.0;
+        let mut cache = crate::engine::cache::KVCache::new(m.layers.len());
         while out.len() < max_new {
             let draft_ids = self.draft(&ids, n_draft);
             if draft_ids.is_empty() {
-                let logits = m.prefill(&ids);
+                // KV 缓存续接（替代每轮全量 prefill——镜像 generate_stream_sampled）
+                let h = m.prefill_cached(&ids, &mut cache);   // (L, hidden)
+                let logits = h.matmul(&m.lm_head.transpose());  // (L, vocab)
                 let start = (ids.len() - 1) * logits.cols;
                 let last = &logits.data[start..start + logits.cols];
                 let tok = if greedy {
@@ -141,7 +144,8 @@ impl MarkovSpeculator {
             }
             let mut trial = ids.clone();
             trial.extend(&draft_ids);
-            let logits = m.prefill(&trial);
+            let h = m.prefill_cached(&trial, &mut cache);   // KV 缓存续接（避免每轮全量 prefill）
+            let logits = h.matmul(&m.lm_head.transpose());  // (L, vocab)
             let mut accepted = 0usize;
             let mut correction = None;
             for (k, &d) in draft_ids.iter().enumerate() {

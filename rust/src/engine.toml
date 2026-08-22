@@ -24,7 +24,7 @@ model = "Qwen3.6-35B-A3B-AWQ-4bit"    # 默认对话模型：须与某个 [model
 [model]
 name = "Qwen3.6-35B-A3B-AWQ-4bit"     # 短名：主对话模型
 path = "models/Qwen3.6-35B-A3B-AWQ-4bit"
-expert_cache_max = 128                # 专家缓存上限（跨层共享，与层数无关）
+expert_cache_max = 64                # 专家缓存上限（跨层共享，与层数无关）
 dspark_model = "Qwen3.6-35B-A3B-speculator.dspark"                     # 投机解码草稿模型目录；留空 = 禁用投机（标准自回归）
 
 [model]

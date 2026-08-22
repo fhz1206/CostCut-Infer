@@ -1,6 +1,6 @@
 # Python 与 Rust 版本对比报告（v3.1——详细版）
 
-> 日期：2026-08-19（v3.1 更新：64 位 mingw-w64 构建 + 性能重测（并行 2.48x/AVX2 1.25x）+ libtorch 下载（tch 需 MSVC）+ cargo 44 全绿）｜ 对象：CostCut Infer（Python 版 liteengine + Rust 版 costcut-infer）｜ 两版均保留
+> 日期：2026-08-22（v3.2 更新：真实模型端到端跑通（构造 21.1s/prefill 11.4s/生成 13s/3 token）+ 转置权重 + 投机 KV 缓存续接）｜ 对象：CostCut Infer（Python 版 liteengine + Rust 版 costcut-infer）｜ 两版均保留
 > 定位：发布包永远为 Rust 版（build.sh 自动化构建）；Python 版作为技术探索（新功能首发——稳定后同步 Rust）。
 
 ## 1. 两版总览
@@ -118,7 +118,7 @@
 ### 部分 ⚠️
 | 差距 | 说明 | 优先级 |
 |---|---|---|
-| 真实模型端到端生成 | from_real 构造修复 ✓（含 full 注意力构造器注册）；完整 61 层生成受标量反量化性能限制（1 层 280s 超时）——待 SIMD 打包内核/BLAS | **P0** |
+| 真实模型端到端生成 | **已跑通 ✓**（from_real 构造 21.1s/层 + prefill 11.4s + 生成 13s/3 token——1 层截断；cos_sin/o_w/sampling 三个 bug 已修复）——61 层完整生成受标量 matmul 性能限制（lm_head ~3.5-4.7s/token）——待 SIMD 打包内核 | **P0** |
 | BLAS 内核（大 matmul） | Python torch BLAS 512³ 4.74ms vs Rust 串行 24.01ms/并行 9.67ms——快 2-5x——tch/libtorch 已下载但**需 MSVC 工具链**（mingw 不兼容）——candle BLAS 为替代方向 | **P0** |
 | MTP 多模块链 | 单模块已实现；k 模块预测链组装为后续 | P2 |
 | fp16/bf16 计算内核 | 权重路径已接入；f32 计算为主（完整 fp16/bf16 内核为 P2） | P2 |

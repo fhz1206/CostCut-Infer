@@ -73,6 +73,7 @@ impl MtpModule {
             experts: crate::engine::moe::MergedExperts {
                 num_experts: 1, intermediate: inter, hidden,
                 gate_up: vec![0.0; 2 * inter * hidden],
+                gate_up_t: vec![0.0; 2 * inter * hidden],
                 down: vec![0.0; hidden * inter],
                 gate_up_f16: None, down_f16: None,
                 gate_up_bf16: None, down_bf16: None,

@@ -40,6 +40,16 @@ impl DecoderLayer {
                     -> DecoderLayer {
         let hidden = cfg.hidden_size;
         let _ = layer_idx;
+        let mut gate_up_t = vec![0.0f32; gate_up.len()];   // 预转置（列连续缓存友好）
+        let gu_elems = 2 * cfg.moe_intermediate * hidden;
+        for e in 0..num_exp {
+            for i in 0..hidden {
+                for j in 0..2 * cfg.moe_intermediate {
+                    gate_up_t[e * gu_elems + i * 2 * cfg.moe_intermediate + j] =
+                        gate_up[e * gu_elems + j * hidden + i];
+                }
+            }
+        }
         DecoderLayer {
             eps: cfg.eps,
             input_norm_w: vec![1.0; hidden],
@@ -48,7 +58,7 @@ impl DecoderLayer {
             router: TopKRouter { weight: router_w, top_k: 1 },
             experts: MergedExperts {
                 num_experts: num_exp, intermediate: cfg.moe_intermediate, hidden,
-                gate_up, down, gate_up_f16: None, down_f16: None,
+                gate_up, gate_up_t, down, gate_up_f16: None, down_f16: None,
                 gate_up_bf16: None, down_bf16: None,
             },
             shared: None,
@@ -138,6 +148,7 @@ mod tests {
             experts: MergedExperts {
                 num_experts: e, intermediate: inter, hidden,
                 gate_up: vec![0.1; e * 2 * inter * hidden],
+                gate_up_t: vec![0.1; e * 2 * inter * hidden],
                 down: vec![0.1; e * hidden * inter],
                 gate_up_f16: None, down_f16: None,
                 gate_up_bf16: None, down_bf16: None,
@@ -174,6 +185,7 @@ mod tests {
             experts: MergedExperts {
                 num_experts: 1, intermediate: inter, hidden,
                 gate_up: vec![0.1; 2 * inter * hidden],
+                gate_up_t: vec![0.1; 2 * inter * hidden],
                 down: vec![0.1; hidden * inter],
                 gate_up_f16: None, down_f16: None,
                 gate_up_bf16: None, down_bf16: None,

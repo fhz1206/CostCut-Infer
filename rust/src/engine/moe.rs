@@ -39,6 +39,7 @@ pub struct MergedExperts {
     pub intermediate: usize,
     pub hidden: usize,
     pub gate_up: Vec<f32>,   // [E, 2*inter, hidden]
+    pub gate_up_t: Vec<f32>, // [E, hidden, 2*inter]（预转置——列连续缓存友好——避免每 token 转置拷贝）
     pub down: Vec<f32>,      // [E, hidden, inter]
     pub gate_up_f16: Option<Vec<F16Tensor>>,   // compute_dtype="float16" 权重（可选）
     pub down_f16: Option<Vec<F16Tensor>>,
@@ -70,10 +71,11 @@ impl MergedExperts {
                     let gu_bf16 = &self.gate_up_bf16.as_ref().unwrap()[e];
                     xi.matmul_bf16(gu_bf16)
                 } else {
-                    let gu = Tensor::from_vec(
-                        2 * self.intermediate, self.hidden,
-                        self.gate_up[e * gu_elems..(e + 1) * gu_elems].to_vec());
-                    xi.matmul(&gu.transpose())
+                    // 预转置权重（构造时转置一次——列连续；避免每 token 转置拷贝）
+                    let gu_t = Tensor::from_vec(
+                        self.hidden, 2 * self.intermediate,
+                        self.gate_up_t[e * gu_elems..(e + 1) * gu_elems].to_vec());
+                    xi.matmul(&gu_t)
                 };
                 let mut gate = vec![0.0f32; self.intermediate];
                 let mut up = vec![0.0f32; self.intermediate];

@@ -47,6 +47,7 @@ fn synthetic_model() -> engine::model::Model {
             intermediate: inter,
             hidden,
             gate_up: vec![0.05; e * 2 * inter * hidden],
+            gate_up_t: vec![0.05; e * 2 * inter * hidden],
             down: vec![0.05; e * hidden * inter],
             gate_up_f16: None,
             down_f16: None,
