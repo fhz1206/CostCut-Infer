@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from re import match
 from tomllib import loads
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 __all__ = ["EngineConfig", "ModelConfig", "InferenceConfig", "ChatConfig"]
@@ -32,6 +32,8 @@ class ModelConfig:
     path: str = ""                   # 模型目录；留空默认 models/<name>
     expert_cache_max: int = 128      # 专家反量化缓存上限（条目，每条约 12MB）
     dspark_model: str = ""           # 投机解码草稿模型目录；留空 = 禁用投机（标准自回归）
+    rope_type: str = "default"       # RoPE 类型：default（标准）/ yarn（YaRN 长文本外推）
+    rope_scaling: dict = field(default_factory=dict)   # YaRN 外推参数（如 {"factor": 2.0}）
 
     @property
     def model_dir(self) -> str:
@@ -69,6 +71,7 @@ class InferenceConfig:
     expert_parallel: bool = False         # 专家多线程并行（本机实测慢 ~5 倍——默认关，他机可试）
     int4_fused_matmul: bool = False       # int4 融合 matmul（本机实测慢——默认关，他机可试）
     speculate: bool = False               # 投机解码（本机实测慢——默认关；/speculate 可运行时切换）
+    layer_offload: bool = False           # AirLLM 风格层级卸载（层前向后释放专家缓存——降内存峰值）
 
 
 @dataclass
@@ -123,6 +126,8 @@ class EngineConfig:
                 path=str(m.get("path", "")),
                 expert_cache_max=int(m.get("expert_cache_max", 128)),
                 dspark_model=str(m.get("dspark_model", "")),
+                rope_type=str(m.get("rope_type", "default")),
+                rope_scaling=dict(m.get("rope_scaling", {})),
             )
 
         if self.default_model and self.default_model not in self.models:
@@ -146,6 +151,7 @@ class EngineConfig:
             expert_parallel=bool(inf.get("expert_parallel", False)),
             int4_fused_matmul=bool(inf.get("int4_fused_matmul", False)),
             speculate=bool(inf.get("speculate", False)),
+            layer_offload=bool(inf.get("layer_offload", False)),
         )
 
         chat = data.get("chat", {})

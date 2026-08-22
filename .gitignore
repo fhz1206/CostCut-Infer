@@ -23,6 +23,8 @@ ENV/
 target/
 **/*.rs.bk
 *.exe
+# ---- Rust构建依赖 ----（不提交——体积大）
+libtorch/
 
 # ---- 模型权重 / 大文件（不提交——体积大）----
 # 整个模型目录（权重 + 缓存——不提交）
@@ -64,3 +66,5 @@ test_config/
 .atomcode/
 # 本地llama.cpp克隆
 llama.cpp/
+# 本地AirLLM克隆
+airllm/

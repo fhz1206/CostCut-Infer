@@ -44,10 +44,11 @@ class Qwen3_5MoeModel:
         cfg: ``load_text_config`` 的 text_config。
     """
 
-    def __init__(self, store, cfg: dict, expert_cache_max: int = 128):
+    def __init__(self, store, cfg: dict, expert_cache_max: int = 128, layer_offload: bool = False):
         self.store = store
         self.cfg = cfg
         self.expert_cache_max = expert_cache_max
+        self.layer_offload = layer_offload   # AirLLM 风格层级卸载（层前向后释放专家缓存——降内存峰值）
         self._expert_cache = ExpertCache(max_entries=expert_cache_max)
         self.num_layers = int(cfg["num_hidden_layers"])
         self.hidden_size = int(cfg["hidden_size"])
@@ -58,6 +59,8 @@ class Qwen3_5MoeModel:
             int(cfg["head_dim"]),
             float(cfg.get("rope_theta", rope_cfg.get("rope_theta", 1e7))),
             float(cfg.get("rope_partial", rope_cfg.get("partial_rotary_factor", 0.25))),
+            str(cfg.get("rope_type", rope_cfg.get("rope_type", "default"))),
+            dict(cfg.get("rope_scaling", rope_cfg.get("rope_scaling", {}))),
         )
         self._layers: dict[int, DecoderLayer] = {}
         self._embed: Tensor | None = None
@@ -122,6 +125,8 @@ class Qwen3_5MoeModel:
         h = h.unsqueeze(0)                            # (1, L, hidden)
         for i in range(n):
             h = self.layer(i)(h, cos, sin, mask)
+            if self.layer_offload:
+                self.layer(i).offload()
         return h.squeeze(0)                           # (L, hidden)
 
     # ---- 生成（M3）----
@@ -205,6 +210,8 @@ class Qwen3_5MoeModel:
         mask = causal_mask(seq_len) if use_mask else None
         for i in range(n):
             h = self.layer(i)(h, cos, sin, mask, cache)
+            if self.layer_offload:
+                self.layer(i).offload()
         h = rms_norm(h, self.final_norm(), self.eps)             # 最终归一化（lm_head 前）
         return h.squeeze(0)                                              # (L, hidden)
 
@@ -217,6 +224,8 @@ class Qwen3_5MoeModel:
         n = self.num_layers if num_layers is None else num_layers
         for i in range(n):
             h = self.layer(i).forward_step(h, cos, sin, cache)
+            if self.layer_offload:
+                self.layer(i).offload()
         h = rms_norm(h, self.final_norm(), self.eps)             # 最终归一化（lm_head 前）
         return h                                                        # (1, 1, hidden)
 

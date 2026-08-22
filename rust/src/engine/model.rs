@@ -49,6 +49,7 @@ impl Model {
         for i in 0..n {
             let lp = format!("{prefix}.layers.{i}");
             let attn_type = cfg.layer_types.get(i).map(|s| s.as_str()).unwrap_or("full_attention");
+            println!("[from_real] layer {i} attn_type={attn_type}");
             let attn: Box<dyn crate::engine::registry::Attention> =
                 if attn_type.contains("linear") {
                     // 线性注意力：GatedDeltaNet（conv + in_proj + delta rule）
@@ -102,40 +103,86 @@ impl Model {
                 let mut gate_up_bf16: Vec<crate::core::tensor::BF16Tensor> = Vec::new();
                 let mut down_bf16: Vec<crate::core::tensor::BF16Tensor> = Vec::new();
                 let dq = crate::quant::dequant::dequantize_awq;
-                for ex in 0..e {
-                    let ep = format!("{lp}.mlp.experts.{ex}");
-                    // Qwen3.5 实际为 gate_proj/up_proj 分离（非融合 gate_up_proj）
-                    let gw = store.get_i32(&format!("{ep}.gate_proj.qweight")).unwrap_or_default();
-                    let gz = store.get_i32(&format!("{ep}.gate_proj.qzeros")).unwrap_or_default();
-                    let gs = store.get_f32(&format!("{ep}.gate_proj.scales")).unwrap_or_default();
-                    let g = dq(&gw, &gz, &gs, inter, hidden, gs_size);
-                    let uw = store.get_i32(&format!("{ep}.up_proj.qweight")).unwrap_or_default();
-                    let uz = store.get_i32(&format!("{ep}.up_proj.qzeros")).unwrap_or_default();
-                    let us = store.get_f32(&format!("{ep}.up_proj.scales")).unwrap_or_default();
-                    let u = dq(&uw, &uz, &us, inter, hidden, gs_size);
-                    let base = ex * 2 * inter * hidden;
-                    gate_up[base..base + inter * hidden].copy_from_slice(&g);
-                    gate_up[base + inter * hidden..base + 2 * inter * hidden].copy_from_slice(&u);
-                    // fp16/bf16 权重（[2*inter, hidden]——与 f32 融合布局一致）
-                    let mut gu_f16 = Vec::with_capacity(inter * hidden * 2);
-                    gu_f16.extend_from_slice(&g);
-                    gu_f16.extend_from_slice(&u);
-                    let dw = store.get_i32(&format!("{ep}.down_proj.qweight")).unwrap_or_default();
-                    let dz = store.get_i32(&format!("{ep}.down_proj.qzeros")).unwrap_or_default();
-                    let ds = store.get_f32(&format!("{ep}.down_proj.scales")).unwrap_or_default();
-                    let d = dq(&dw, &dz, &ds, hidden, inter, gs_size);
-                    down[ex * hidden * inter..(ex + 1) * hidden * inter].copy_from_slice(&d);
-                    if use_fp16 {
-                        gate_up_f16.push(crate::core::tensor::F16Tensor::from_f32(
-                            2 * inter, hidden, &gu_f16));
-                        down_f16.push(crate::core::tensor::F16Tensor::from_f32(
-                            hidden, inter, &d));
+                // 反量化并行化（std::thread 专家并行——构造加速；每线程局部结果后按序合并）
+                let n_threads = std::thread::available_parallelism()
+                    .map(|n| n.get()).unwrap_or(4).min(e);
+                let chunk = e.div_ceil(n_threads);
+                let results: Vec<(usize, Vec<f32>, Vec<f32>)> = std::thread::scope(|s| {
+                    let mut handles = Vec::new();
+                    for t in 0..n_threads {
+                        let lo = t * chunk;
+                        let hi = (lo + chunk).min(e);
+                        if lo >= hi { continue; }
+                        let lp = lp.clone();
+                        let store = store;
+                        handles.push((lo, s.spawn(move || {
+                            let mut gu = vec![0.0f32; (hi - lo) * 2 * inter * hidden];
+                            let mut dn = vec![0.0f32; (hi - lo) * hidden * inter];
+                            for (k, ex) in (lo..hi).enumerate() {
+                                let ep = format!("{lp}.mlp.experts.{ex}");
+                                // Qwen3.5 实际为 gate_proj/up_proj 分离（非融合 gate_up_proj）
+                                let gw = store.get_i32(&format!("{ep}.gate_proj.qweight")).unwrap_or_default();
+                                let gz = store.get_i32(&format!("{ep}.gate_proj.qzeros")).unwrap_or_default();
+                                let gs = store.get_f32(&format!("{ep}.gate_proj.scales")).unwrap_or_default();
+                                let g = dq(&gw, &gz, &gs, inter, hidden, gs_size);
+                                let uw = store.get_i32(&format!("{ep}.up_proj.qweight")).unwrap_or_default();
+                                let uz = store.get_i32(&format!("{ep}.up_proj.qzeros")).unwrap_or_default();
+                                let us = store.get_f32(&format!("{ep}.up_proj.scales")).unwrap_or_default();
+                                let u = dq(&uw, &uz, &us, inter, hidden, gs_size);
+                                let base = k * 2 * inter * hidden;
+                                gu[base..base + inter * hidden].copy_from_slice(&g);
+                                gu[base + inter * hidden..base + 2 * inter * hidden].copy_from_slice(&u);
+                                let dw = store.get_i32(&format!("{ep}.down_proj.qweight")).unwrap_or_default();
+                                let dz = store.get_i32(&format!("{ep}.down_proj.qzeros")).unwrap_or_default();
+                                let ds = store.get_f32(&format!("{ep}.down_proj.scales")).unwrap_or_default();
+                                let d = dq(&dw, &dz, &ds, hidden, inter, gs_size);
+                                dn[k * hidden * inter..(k + 1) * hidden * inter].copy_from_slice(&d);
+                            }
+                            (gu, dn)
+                        })));
                     }
-                    if use_bf16 {
-                        gate_up_bf16.push(crate::core::tensor::BF16Tensor::from_f32(
-                            2 * inter, hidden, &gu_f16));
-                        down_bf16.push(crate::core::tensor::BF16Tensor::from_f32(
-                            hidden, inter, &d));
+                    handles.into_iter().map(|(lo, h)| {
+                        let (gu, dn) = h.join().unwrap();
+                        (lo, gu, dn)
+                    }).collect()
+                });
+                for (lo, gu, dn) in results {
+                    let base = lo * 2 * inter * hidden;
+                    gate_up[base..base + gu.len()].copy_from_slice(&gu);
+                    let dbase = lo * hidden * inter;
+                    down[dbase..dbase + dn.len()].copy_from_slice(&dn);
+                }
+                // fp16/bf16 权重（默认 fp32 不启用——启用时顺序构建）
+                if use_fp16 || use_bf16 {
+                    for ex in 0..e {
+                        let ep = format!("{lp}.mlp.experts.{ex}");
+                        let gw = store.get_i32(&format!("{ep}.gate_proj.qweight")).unwrap_or_default();
+                        let gz = store.get_i32(&format!("{ep}.gate_proj.qzeros")).unwrap_or_default();
+                        let gs = store.get_f32(&format!("{ep}.gate_proj.scales")).unwrap_or_default();
+                        let g = dq(&gw, &gz, &gs, inter, hidden, gs_size);
+                        let uw = store.get_i32(&format!("{ep}.up_proj.qweight")).unwrap_or_default();
+                        let uz = store.get_i32(&format!("{ep}.up_proj.qzeros")).unwrap_or_default();
+                        let us = store.get_f32(&format!("{ep}.up_proj.scales")).unwrap_or_default();
+                        let u = dq(&uw, &uz, &us, inter, hidden, gs_size);
+                        let mut gu_f16 = Vec::with_capacity(inter * hidden * 2);
+                        gu_f16.extend_from_slice(&g);
+                        gu_f16.extend_from_slice(&u);
+                        let dw = store.get_i32(&format!("{ep}.down_proj.qweight")).unwrap_or_default();
+                        let dz = store.get_i32(&format!("{ep}.down_proj.qzeros")).unwrap_or_default();
+                        let ds = store.get_f32(&format!("{ep}.down_proj.scales")).unwrap_or_default();
+                        let d = dq(&dw, &dz, &ds, hidden, inter, gs_size);
+                        if use_fp16 {
+                            gate_up_f16.push(crate::core::tensor::F16Tensor::from_f32(
+                                2 * inter, hidden, &gu_f16));
+                            down_f16.push(crate::core::tensor::F16Tensor::from_f32(
+                                hidden, inter, &d));
+                        }
+                        if use_bf16 {
+                            gate_up_bf16.push(crate::core::tensor::BF16Tensor::from_f32(
+                                2 * inter, hidden, &gu_f16));
+                            down_bf16.push(crate::core::tensor::BF16Tensor::from_f32(
+                                hidden, inter, &d));
+                        }
                     }
                 }
                 (get(&format!("{lp}.mlp.gate.weight"), e), gate_up, down, e,
@@ -178,15 +225,18 @@ impl Model {
 
     /// 位置 0..len 的 cos/sin 张量（(len, rope_dim)）。
     pub fn cos_sin(&self, len: usize) -> (Tensor, Tensor) {
+        let tc = std::time::Instant::now();
+        println!("[cos] len={} rope_dim={} inv_freq={}", len, self.rope_dim, self.inv_freq.len());
         let mut cos = vec![0.0f32; len * self.rope_dim];
         let mut sin = vec![0.0f32; len * self.rope_dim];
         for p in 0..len {
             let (c, s) = rotary_embeddings(p, &self.inv_freq);
             for j in 0..self.rope_dim {
-                cos[p * self.rope_dim + j] = c[j];
-                sin[p * self.rope_dim + j] = s[j];
+                cos[p * self.rope_dim + j] = c[j / 2];
+                sin[p * self.rope_dim + j] = s[j / 2];
             }
         }
+        println!("[cos] done {:.3}s", tc.elapsed().as_secs_f64());
         (Tensor::from_vec(len, self.rope_dim, cos),
          Tensor::from_vec(len, self.rope_dim, sin))
     }
@@ -194,14 +244,24 @@ impl Model {
     /// prefill：input_ids → 各位置 logits (L, vocab)。
     pub fn prefill(&self, input_ids: &[usize]) -> Tensor {
         let l = input_ids.len();
+        let t0 = std::time::Instant::now();
         let mut h = self.embed_rows(input_ids);
+        println!("[prefill] embed done {:.2}s", t0.elapsed().as_secs_f64());
+        let t1 = std::time::Instant::now();
         let mask = causal_mask(l);
+        println!("[prefill] mask done {:.2}s", t0.elapsed().as_secs_f64());
         let (cos, sin) = self.cos_sin(l);
+        println!("[prefill] rope done {:.2}s", t0.elapsed().as_secs_f64());
         for layer in &self.layers {
             h = layer.forward(&h, &cos, &sin, Some(&mask));
         }
+        let t2 = std::time::Instant::now();
         let h = rms_norm(&h, &self.final_norm_w, self.eps);
-        h.matmul(&self.lm_head.transpose())     // (L, vocab)
+        let out = h.matmul(&self.lm_head.transpose());     // (L, vocab)
+        println!("[prefill] embed {:.2}s layers {:.2}s lm_head {:.2}s",
+                 t1.elapsed().as_secs_f64(), t2.elapsed().as_secs_f64(),
+                 t2.elapsed().as_secs_f64() - t1.elapsed().as_secs_f64());
+        out
     }
 
     /// 输入末位的隐藏态（final norm 前——投机草稿的 aux 目标隐藏态，镜像 Python draft 的 h_target）。
@@ -243,8 +303,8 @@ impl Model {
         for p in 0..len {
             let (c, s) = rotary_embeddings(p, &self.inv_freq);
             for j in 0..self.rope_dim {
-                cos[p * self.rope_dim + j] = c[j];
-                sin[p * self.rope_dim + j] = s[j];
+                cos[p * self.rope_dim + j] = c[j / 2];
+                sin[p * self.rope_dim + j] = s[j / 2];
             }
         }
         (Tensor::from_vec(len, self.rope_dim, cos),
@@ -310,6 +370,7 @@ impl Model {
         let mut pos = input_ids.len();
         let mut out = Vec::new();
         for _ in 0..max_new_tokens {
+            let t_lm = std::time::Instant::now();
             let logits = h.matmul(&self.lm_head.transpose());       // (1, vocab)
             let last = &logits.data[..logits.cols];
             let tok = if temperature <= 0.0 {
@@ -321,6 +382,7 @@ impl Model {
             out.push(tok);
             on_token(tok);
             h = self.decode_step(tok, pos, &mut cache);
+            println!("[gen] lm_head {:.2}s", t_lm.elapsed().as_secs_f64());
             pos += 1;
         }
         out

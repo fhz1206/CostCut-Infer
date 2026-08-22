@@ -124,9 +124,8 @@ fn run_smoke() {
         Err(e) => println!("[M1] safetensors 打开失败: {e}"),
     }
 
-    // M5 冒烟：from_real 真实模型浅层构造 + 前向——1 层标量反量化超时（P0——SIMD 前跳过）
-    if false {
-        println!("=== M5 from_real 真实模型浅层冒烟（截断 1 层）===");
+    // M5 冒烟：from_real 真实模型浅层构造 + 前向 + 生成（截断 2 层——并行反量化 + BLAS 后可行）
+    println!("=== M5 from_real 真实模型浅层冒烟（截断 1 层）===");
     let dir5 = model_dir("Qwen3.6-35B-A3B-AWQ-4bit");
     match crate::engine::model_config::load_model_config(&dir5) {
         Ok(cfg5) => {
@@ -134,13 +133,21 @@ fn run_smoke() {
                 .map(|i| format!("{dir5}/model-{i:05}-of-00006.safetensors"))
                 .collect();
             if let Ok(st5) = SafeTensors::open_multi(&paths5) {
-                match engine::model::Model::from_real_truncated(&st5, &cfg5, 0) {
+                let t_c = Instant::now();
+                let m5r = engine::model::Model::from_real_truncated(&st5, &cfg5, 1);
+                println!("[M5] from_real 1 层构造耗时 {:.1}s", t_c.elapsed().as_secs_f64());
+                match m5r {
                     Ok(m5) => {
                         let ids = [1usize, 2, 3];
+                        let t_p = Instant::now();
                         let logits = m5.prefill(&ids);
-                        println!("[M5] from_real 截断模型 prefill: {}x{} finite={}",
-                                 logits.rows, logits.cols,
+                        println!("[M5] prefill 耗时 {:.1}s 结果 {}x{} finite={}",
+                                 t_p.elapsed().as_secs_f64(), logits.rows, logits.cols,
                                  logits.data.iter().all(|v| v.is_finite()));
+                        let t0 = Instant::now();
+                        let gen = m5.generate(&ids, 3);
+                        println!("[M5] from_real 生成: {:?} 耗时 {:.1}s",
+                                 gen, t0.elapsed().as_secs_f64());
                     }
                     Err(e) => println!("[M5] from_real 构造失败: {e}"),
                 }
@@ -149,7 +156,6 @@ fn run_smoke() {
             }
         }
         Err(e) => println!("[M5] 配置加载失败: {e}"),
-    }
     }
 
     // M2-M3 冒烟：合成小模型前向 + 贪心生成
@@ -180,6 +186,29 @@ fn run_smoke() {
     let same = (0..c1.data.len()).all(|i| (c1.data[i] - c2.data[i]).abs() < 1e-3);
     println!("serial {:?} vs parallel(4线程) {:?} 提速 {:.2}x 结果一致={}",
              ts, tp, ts.as_secs_f64() / tp.as_secs_f64().max(1e-9), same);
+
+    // tch BLAS matmul（libtorch 后端——BLAS 接入验证）
+    let t0 = Instant::now();
+    let c5 = a.matmul_blas(&b);
+    let tblas = t0.elapsed();
+    let same5 = (0..c1.data.len()).all(|i| (c1.data[i] - c5.data[i]).abs() < 1e-3);
+    println!("tch BLAS {:?} vs serial {:?} 提速 {:.2}x 结果一致={}",
+             tblas, ts, ts.as_secs_f64() / tblas.as_secs_f64().max(1e-9), same5);
+
+    // 2048² matmul（真实模型规模——matmul_blas 转换开销评估）
+    let n2 = 2048usize;
+    let a2 = Tensor::from_vec(n2, n2, (0..n2 * n2).map(|i| (i % 7) as f32 * 0.001).collect());
+    let b2 = Tensor::from_vec(n2, n2, (0..n2 * n2).map(|i| (i % 5) as f32 * 0.001).collect());
+    let t0 = Instant::now();
+    let c2s = a2.matmul(&b2);
+    let t2s = t0.elapsed();
+    let t0 = Instant::now();
+    let c2b = a2.matmul_blas(&b2);
+    let t2b = t0.elapsed();
+    println!("2048² scalar {:.2}s vs tch BLAS {:.2}s 提速 {:.2}x 一致={}",
+             t2s.as_secs_f64(), t2b.as_secs_f64(),
+             t2s.as_secs_f64() / t2b.as_secs_f64().max(1e-9),
+             (0..c2s.data.len()).all(|i| (c2s.data[i] - c2b.data[i]).abs() < 1e-2));
 
     // AVX2/FMA matmul（docs 性能方向）：与串行/并行对比
     let t0 = Instant::now();

@@ -1,6 +1,6 @@
-# Python 与 Rust 版本对比报告（v3.0——详细版）
+# Python 与 Rust 版本对比报告（v3.1——详细版）
 
-> 日期：2026-08-19（v3.0 更新：K 系列 GGUF/投机采样接受/MTP/多模型真实切换/per-model 历史/KV 缓存续接已同步）｜ 对象：CostCut Infer（Python 版 liteengine + Rust 版 costcut-infer）｜ 两版均保留
+> 日期：2026-08-19（v3.1 更新：64 位 mingw-w64 构建 + 性能重测（并行 2.48x/AVX2 1.25x）+ libtorch 下载（tch 需 MSVC）+ cargo 44 全绿）｜ 对象：CostCut Infer（Python 版 liteengine + Rust 版 costcut-infer）｜ 两版均保留
 > 定位：发布包永远为 Rust 版（build.sh 自动化构建）；Python 版作为技术探索（新功能首发——稳定后同步 Rust）。
 
 ## 1. 两版总览
@@ -8,9 +8,9 @@
 | 维度 | Python 版（liteengine） | Rust 版（costcut-infer） |
 |---|---|---|
 | 定位 | 技术探索版（新功能首发/验证），不参与发布 | 发布版（发布包永远为 Rust 版） |
-| 计算 | torch/numpy（BLAS 4 线程） | 纯 std（无外部依赖——离线可构建） |
-| 真实模型 | Qwen3.5 61 层完整运行（36.08 s/token） | from_real 组件就绪（截断浅层冒烟）——完整生成受标量反量化性能限制 |
-| 测试 | 分批次回归全过 | cargo test 41 全绿 |
+| 计算 | torch/numpy（BLAS 4 线程） | 依赖启用（candle-core 等 8 个——64 位 mingw-w64 GCC 15.3 编译；tch/libtorch 需 MSVC 暂禁用） |
+| 真实模型 | Qwen3.5 61 层完整运行（36.08 s/token） | from_real 组件就绪（含 full 注意力构造器）——完整生成受标量反量化性能限制（1 层超时——P0） |
+| 测试 | 分批次回归全过 | cargo test **44 全绿** |
 | 组件数 | 25 模块 | 17 文件（量化/加载内联） |
 
 ## 2. 模块级对应表（文件 ↔ 文件）
@@ -104,10 +104,11 @@
 ### 3.7 性能与测试
 | 子项 | Python | Rust | 状态 |
 |---|---|---|---|
-| 合成模型速度 | torch BLAS | ~0.07 ms/token（纯 std） | ✅ Rust 快 |
-| 真实模型速度 | 36.08 s/token（40 层） | 标量反量化受限（1 层截断冒烟——分钟级） | ⚠️ P0 |
-| matmul 并行 | torch 4 线程 | std::thread 并行（512³ 2.56x） | ✅ |
-| 单元测试 | 分批次回归全过 | cargo test 41 全绿 | ✅ |
+| 合成模型速度 | torch BLAS（调用开销大） | ~0.2 ms/3 token（64 位 GCC 15.3） | ✅ Rust 快 |
+| 真实模型速度 | 36.08 s/token（40 层） | 标量反量化受限（1 层超时——P0） | ⚠️ P0 |
+| matmul 并行（512³） | torch BLAS 4 线程（**4.74ms**） | std::thread 并行（serial 24.01ms→并行 **9.67ms——2.48x**——64 位编译器） | ⚠️ Python BLAS 快 2x |
+| AVX2/FMA | — | **1.25x**（64 位编译器转正——旧工具链 0.93x 负） | ✅ |
+| 单元测试 | 分批次回归全过 | cargo test **44 全绿** | ✅ |
 
 ## 4. 差距汇总
 
@@ -118,6 +119,7 @@
 | 差距 | 说明 | 优先级 |
 |---|---|---|
 | 真实模型端到端生成 | from_real 构造修复 ✓（含 full 注意力构造器注册）；完整 61 层生成受标量反量化性能限制（1 层 280s 超时）——待 SIMD 打包内核/BLAS | **P0** |
+| BLAS 内核（大 matmul） | Python torch BLAS 512³ 4.74ms vs Rust 串行 24.01ms/并行 9.67ms——快 2-5x——tch/libtorch 已下载但**需 MSVC 工具链**（mingw 不兼容）——candle BLAS 为替代方向 | **P0** |
 | MTP 多模块链 | 单模块已实现；k 模块预测链组装为后续 | P2 |
 | fp16/bf16 计算内核 | 权重路径已接入；f32 计算为主（完整 fp16/bf16 内核为 P2） | P2 |
 | 灵活缩放（per-channel[in]/[out]/2D） | Rust per-tensor 为主 | P2 |
@@ -133,4 +135,4 @@
 1. **Rust 已大幅追平 Python**：12 个核心模块一一对应（attention/moe/layer/model/model_config/norm/rope/sampling/registry/speculator/cache/gguf），量化模块内联于 dequant.rs，CLI/配置/投机/注册表/多模态结构层全部对齐；cargo test 41 全绿。
 2. **关键剩余差距**：真实模型端到端生成（P0——性能待 SIMD 内核）、GGUF 名称映射（P1）、fp16/bf16 内核/灵活缩放/投机采样接受（P2）、MTP（P2）。
 3. **两版定位**：发布包永远为 Rust 版；Python 版技术探索（新功能首发）。两版均保留。
-4. 逐项同步进度详见 `docs/rust/Python到Rust同步清单.md`。
+4. 逐项同步进度见本文第 3 节功能级对比与第 4 节差距汇总（原独立《Python到Rust同步清单》已并入本文——2026-08-22）。

@@ -99,10 +99,15 @@ class ChatSession:
         """liteengine 模型（首次调用构建，40 层约需 1-2 分钟）。"""
         if self._model is None:
             self._store = WeightStore(self.model_cfg.model_dir)
+            cfg = load_text_config(self.model_cfg.model_dir)
+            # 用户可配置：engine.toml [model] 的 rope_type/rope_scaling（YaRN 长文本外推）
+            cfg["rope_type"] = self.model_cfg.rope_type
+            cfg["rope_scaling"] = self.model_cfg.rope_scaling
             self._model = Qwen3_5MoeModel(
                 self._store,
-                load_text_config(self.model_cfg.model_dir),
+                cfg,
                 expert_cache_max=self.model_cfg.expert_cache_max,
+                layer_offload=self._cfg.inference.layer_offload,
             )
         return self._model
 

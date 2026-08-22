@@ -7,15 +7,47 @@
 """
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import Tensor
 
 
-def compute_inv_freq(head_dim: int, theta: float = 1e7, partial_rotary_factor: float = 0.25) -> Tensor:
-    """``inv_freq = 1 / (theta ** (arange(0, rotary_dim, 2) / rotary_dim))``。"""
+def compute_inv_freq(head_dim: int, theta: float = 1e7, partial_rotary_factor: float = 0.25,
+                     rope_type: str = "default", rope_scaling: dict | None = None) -> Tensor:
+    """计算 RoPE 逆频率。``inv_freq = 1 / (theta ** (arange(0, rotary_dim, 2) / rotary_dim))``。
+
+    rope_type="yarn" 时启用完整 YaRN（NTK-by-parts 波长斜坡插值 + 注意力温度缩放）：
+    - NTK-by-parts：``h(θ) = (1-γ)·θ/s + γ·θ``——γ(r) 为波长斜坡（r = 波长/原始最大长度）：
+      r < β_slow（高频）插值 θ/s；r > β_fast（低频）保持 θ；中间平滑过渡。
+    - 温度缩放：``√(1/t) = 0.1·ln(s) + 1``——缩放频率（等价于注意力 logits 温度）。
+    """
     rotary_dim = int(head_dim * partial_rotary_factor)
     arange = torch.arange(0, rotary_dim, 2, dtype=torch.float32)
-    return 1.0 / (theta ** (arange / rotary_dim))
+    inv_freq = 1.0 / (theta ** (arange / rotary_dim))
+    if rope_type == "yarn":
+        scaling = rope_scaling or {}
+        factor = float(scaling.get("factor", 2.0))
+        original_max = float(scaling.get("original_max_position_embeddings", 4096))
+        beta_fast = float(scaling.get("beta_fast", 32.0))   # 低频保持边界（γ=1）
+        beta_slow = float(scaling.get("beta_slow", 1.0))    # 高频插值边界（γ=0）
+        freqs = theta ** (arange / rotary_dim)              # 原始频率 θ（角频率 ω=θ^(2i/d)——波长=2π·θ^(2i/d)）
+        new_freqs = []
+        for f in freqs:
+            wavelen = 2 * math.pi * float(f)                # 波长（周期——2π/ω=2π·θ^(2i/d)——i 大波长长）
+            r = wavelen / original_max                      # 归一化波长
+            if r < beta_slow:
+                gamma = 0.0                                  # 高频：插值 θ/s
+            elif r > beta_fast:
+                gamma = 1.0                                  # 低频：保持 θ
+            else:
+                gamma = (r - beta_slow) / (beta_fast - beta_slow)
+            new_freqs.append((1 - gamma) * float(f) / factor + gamma * float(f))
+        inv_freq = 1.0 / torch.tensor(new_freqs, dtype=torch.float32)
+        # 注意力温度缩放：√(1/t) = 0.1·ln(s) + 1（等价于缩放 cos/sin 频率）
+        temp = 0.1 * math.log(factor) + 1.0
+        inv_freq = inv_freq * temp
+    return inv_freq
 
 
 def rotary_embeddings(position_ids: Tensor, inv_freq: Tensor) -> tuple[Tensor, Tensor]:

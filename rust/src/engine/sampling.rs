@@ -5,7 +5,8 @@ use crate::core::tensor::Tensor;
 pub fn argmax_row(data: &[f32]) -> usize {
     data.iter()
         .enumerate()
-        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+        // NaN 安全：partial_cmp 遇 NaN 返回 None——按 Equal 处理（避免 unwrap panic）
+        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
         .map(|(i, _)| i)
         .unwrap_or(0)
 }
