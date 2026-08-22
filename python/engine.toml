@@ -26,6 +26,10 @@ name = "Qwen3.6-35B-A3B-AWQ-4bit"     # 短名：主对话模型
 path = "models/Qwen3.6-35B-A3B-AWQ-4bit"
 expert_cache_max = 128                # 专家缓存上限（跨层共享，与层数无关）
 dspark_model = "Qwen3.6-35B-A3B-speculator.dspark"                     # 投机解码草稿模型目录；留空 = 禁用投机（标准自回归）
+# rope_type：default（标准 RoPE）/ yarn（完整 YaRN——NTK-by-parts 波长斜坡插值 + 注意力温度缩放）
+# rope_scaling：factor=外推倍数；original_max_position_embeddings=原始最大长度；beta_fast=低频保持边界；beta_slow=高频插值边界
+rope_type = "default"
+rope_scaling = { factor = 2.0, original_max_position_embeddings = 4096, beta_fast = 32.0, beta_slow = 1.0 }
 
 [model]
 name = "Qwen3-ASR-1.7B"               # 短名（liteengine 不支持 ASR 架构，仅注册显示）
@@ -49,8 +53,22 @@ system_prompt = "你是一个编程助手"   # 系统提示词（对话开头注
 # 精度 / 优化开关（本机实测部分优化反而变慢——默认关闭，他机 / 其它精度模型可开启尝试）
 compute_dtype = "float32"      # 计算精度：fp32（本机 CPU 实测最优）/ fp16 / bf16（可选）
 expert_parallel = false        # 专家多线程并行（本机实测慢 ~5 倍——默认关，他机可试）
-int4_fused_matmul = false      # int4 融合 matmul（本机实测慢——默认关，他机可试）
+int4_fused_matmul = false      # int4 融合 matmul（CPU 合成场景实测 1.89x——真实模型转置适配后开启）
 speculate = false              # 投机解码（本机实测慢——默认关；/speculate 可运行时切换）
+layer_offload = false          # AirLLM 风格层级卸载（层前向后释放专家缓存——降内存峰值；换层重反量化略慢）
+
+# ------------------------------------------------------------
+# 设备推荐配置（按硬件选择 kind——推荐值如下，可覆盖）
+#   cpu：threads=物理核数、fp16=false、fused_matmul=false、expert_parallel=false（本机 12GB CPU 实测）
+#   gpu：threads=0（由 torch 管理）、fp16=true、fused_matmul=true、expert_parallel=true
+#   npu：threads=0、fp16=true、fused_matmul=true、expert_parallel=true（昇腾/寒武纪等 NPU）
+# ------------------------------------------------------------
+[device]
+kind = "cpu"               # 设备类型：cpu / gpu / npu（推荐值随 kind 切换）
+threads = 0                # 推理线程数（0 = 自动；CPU 推荐物理核数）
+fp16 = false               # fp16 计算（GPU/NPU 推荐 true）
+fused_matmul = false       # int4 融合 matmul（GPU/NPU 推荐 true——CPU 需真实转置适配后开启）
+expert_parallel = false    # 专家多线程并行（多核/异构推荐 true——本机实测慢）
 
 # ------------------------------------------------------------
 # 对话历史

@@ -31,23 +31,80 @@ impl Tensor {
     /// 矩阵乘法：self (m, k) × rhs (k, n) → (m, n)。
     /// 朴素三重循环（i-k-j 顺序利于缓存）。
     pub fn matmul(&self, rhs: &Tensor) -> Tensor {
+        // 实测 matmul_blas 转换开销抵消 BLAS 优势（512³ 0.14x、2048² 0.99x）——回退纯标量
         assert_eq!(self.cols, rhs.rows, "matmul 形状不匹配");
         let (m, k, n) = (self.rows, self.cols, rhs.cols);
         let mut out = Tensor::zeros(m, n);
-        for i in 0..m {
-            for kk in 0..k {
-                let a = self.get(i, kk);
-                if a == 0.0 {
-                    continue;
+        let threads = std::thread::available_parallelism().map(|p| p.get()).unwrap_or(4);
+        // 行并行（std::thread——大矩阵才有收益；小矩阵保持标量避免线程开销）
+        if m >= 64 && k >= 256 && n >= 256 && threads > 1 {
+            let chunk = m.div_ceil(threads);
+            let mut out_rows: Vec<&mut [f32]> = Vec::new();
+            let mut rest = &mut out.data[..];
+            for t in 0..threads {
+                let lo = t * chunk;
+                let hi = (lo + chunk).min(m);
+                if lo >= hi {
+                    break;
                 }
-                let row = i * n;
-                let b_row = kk * n;
-                for j in 0..n {
-                    out.data[row + j] += a * rhs.data[b_row + j];
+                let (head, tail) = rest.split_at_mut((hi - lo) * n);
+                out_rows.push(head);
+                rest = tail;
+            }
+            let a = &self.data;
+            let b = &rhs.data;
+            std::thread::scope(|s| {
+                let mut handles = Vec::new();
+                for (t, row_slice) in out_rows.into_iter().enumerate() {
+                    let lo = t * chunk;
+                    handles.push(s.spawn(move || {
+                        for i in 0..row_slice.len() / n {
+                            let row = i * n;
+                            for kk in 0..k {
+                                let av = a[(lo + i) * k + kk];
+                                if av == 0.0 {
+                                    continue;
+                                }
+                                let b_row = kk * n;
+                                for j in 0..n {
+                                    row_slice[row + j] += av * b[b_row + j];
+                                }
+                            }
+                        }
+                    }));
+                }
+                for h in handles {
+                    h.join().unwrap();
+                }
+            });
+        } else {
+            for i in 0..m {
+                for kk in 0..k {
+                    let a = self.get(i, kk);
+                    if a == 0.0 {
+                        continue;
+                    }
+                    let row = i * n;
+                    let b_row = kk * n;
+                    for j in 0..n {
+                        out.data[row + j] += a * rhs.data[b_row + j];
+                    }
                 }
             }
         }
         out
+    }
+
+    /// tch BLAS matmul（libtorch 后端——大矩阵性能追平 torch BLAS；小矩阵转换开销大）。
+    pub fn matmul_blas(&self, rhs: &Tensor) -> Tensor {
+        assert_eq!(self.cols, rhs.rows, "matmul 形状不匹配");
+        let a = tch::Tensor::from_slice(&self.data)
+            .reshape([self.rows as i64, self.cols as i64]);
+        let b = tch::Tensor::from_slice(&rhs.data)
+            .reshape([rhs.rows as i64, rhs.cols as i64]);
+        let c = a.matmul(&b);
+        let data: Vec<f32> = c.flatten(0, -1).try_into().unwrap();
+        Tensor { rows: self.rows, cols: rhs.cols, data }
     }
 
     /// 并行 matmul（std::thread::scope 按行分块，纯 std 无外部依赖）。

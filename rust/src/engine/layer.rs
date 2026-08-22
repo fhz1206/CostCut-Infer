@@ -66,10 +66,21 @@ impl DecoderLayer {
                       mask: Option<&Tensor>) -> (Tensor, Tensor, Tensor) {
         let residual = x.clone();
         let h = rms_norm(x, &self.input_norm_w, self.eps);
+        println!("[layer] enter attn rows={} type={}", x.rows,
+                 std::any::type_name_of_val(&*self.attn));
+        let ta = std::time::Instant::now();
         let (attn_out, k, v) = self.attn.forward_kv(&h, cos, sin, mask);
-        // 残差 + post_norm 融合（镜像 Python rms_norm_add；差异报告 #8）
+        if x.rows >= 3 {
+            println!("[layer] attn {:.3}s", ta.elapsed().as_secs_f64());
+        }
+        let tm = std::time::Instant::now();
         let (h, h_pre) = rms_norm_add(&attn_out, &residual, &self.post_norm_w, self.eps);
-        (h_pre.add(&self.mlp_forward(&h)), k, v)
+        let out = h_pre.add(&self.mlp_forward(&h));
+        if x.rows >= 3 {
+            println!("[layer] attn {:.3}s mlp {:.3}s",
+                     ta.elapsed().as_secs_f64(), tm.elapsed().as_secs_f64());
+        }
+        (out, k, v)
     }
 
     /// decode：x (1, hidden)；k_prev/v_prev 缓存续接。返回 (out, new_k, new_v)。

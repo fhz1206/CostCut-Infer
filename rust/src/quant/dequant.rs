@@ -70,8 +70,13 @@ pub fn dequantize_awq(qweight: &[i32], qzeros: &[i32], scales: &[f32],
         let g = r / group_size;
         let wr = r * in_;
         let zg = g * in_;
+        // 循环局部化（编译器可自动向量化——显著快于逐元素重复索引）
+        let wrow = &w[wr..wr + in_];
+        let zrow = &z[zg..zg + in_];
+        let srow = &scales[zg..zg + in_];
+        let out_row = &mut result[wr..wr + in_];
         for c in 0..in_ {
-            result[wr + c] = (w[wr + c] as i32 - z[zg + c] as i32) as f32 * scales[zg + c];
+            out_row[c] = (wrow[c] as i32 - zrow[c] as i32) as f32 * srow[c];
         }
     }
     result

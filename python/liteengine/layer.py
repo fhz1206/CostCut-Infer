@@ -42,6 +42,11 @@ class DecoderLayer:
         self.mlp = self._build_moe(store, f"{prefix}.mlp", cfg, expert_cache, quant_cfg,
                                    compute_dtype, expert_parallel)
 
+    def offload(self) -> None:
+        """AirLLM 风格层级卸载：释放本层专家反量化缓存（下次前向惰性重建——降低内存峰值）。"""
+        if hasattr(self, "mlp") and hasattr(self.mlp, "clear_cache"):
+            self.mlp.clear_cache()
+
     def _build_moe(self, store, prefix: str, cfg: dict, expert_cache=None,
                    quant_cfg=None, compute_dtype: str = "float32",
                    expert_parallel: bool = False) -> SparseMoeBlock:

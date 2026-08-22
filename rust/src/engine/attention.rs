@@ -131,6 +131,9 @@ impl FullAttention {
     /// prefill 且返回每层 k/v（供缓存填充）——与 Python FullAttention.forward_kv 对应。
     pub fn forward_kv(&self, x: &Tensor, cos: &Tensor, sin: &Tensor,
                       mask: Option<&Tensor>) -> (Tensor, Tensor, Tensor) {
+        println!("[FullAttn] x {}x{} q_w {}x{} k_w {}x{} v_w {}x{}",
+                 x.rows, x.cols, self.q_w.rows, self.q_w.cols,
+                 self.k_w.rows, self.k_w.cols, self.v_w.rows, self.v_w.cols);
         let qg = x.matmul(&self.q_w.transpose());                      // (L, 2*H*hd)
         let (query, gate) = qg.split_cols(self.num_heads * self.head_dim);
         let query = rms_norm(&query, &self.q_norm_w, self.eps);        // (L, H*hd)
@@ -138,7 +141,7 @@ impl FullAttention {
         let v = x.matmul(&self.v_w.transpose());
         let out = self.attend(&query, &k, &v, cos, sin, mask, false);
         // 输出乘 sigmoid(gate) → o_proj
-        (out.elementwise_mul(&gate.sigmoid()).matmul(&self.o_w.transpose()), k, v)
+        (out.elementwise_mul(&gate.sigmoid()).matmul(&self.o_w), k, v)
     }
 
     /// decode：x (1, hidden)；k_prev/v_prev 缓存续接。返回 (out, new_k, new_v)。
@@ -152,7 +155,7 @@ impl FullAttention {
         let k_all = crate::engine::cache::concat_rows(k_prev, &k);
         let v_all = crate::engine::cache::concat_rows(v_prev, &v);
         let out = self.attend(&query, &k_all, &v_all, cos, sin, None, true);
-        (out.elementwise_mul(&gate.sigmoid()).matmul(&self.o_w.transpose()), k_all, v_all)
+        (out.elementwise_mul(&gate.sigmoid()).matmul(&self.o_w), k_all, v_all)
     }
 
     /// 内部注意力（query/k/v 已归一化）：每头打分（与 StandardAttention 相同）。
@@ -439,6 +442,8 @@ impl GatedDeltaNet {
     /// decode 单步：x (1, hidden)；conv_state 续接；rec_state (h_k*kd*vd)。
     pub fn forward_step(&self, x: &Tensor, conv_state: Option<&[f32]>,
                         rec_state: Option<&[f32]>) -> (Tensor, Vec<f32>, Vec<f32>) {
+        let t0 = std::time::Instant::now();
+        println!("[fs0] enter kd={} c={}", self.key_dim, self.key_dim * 2 + self.value_dim);
         let c = self.key_dim * 2 + self.value_dim;
         let kernel = self.conv_w.len() / c;
         // 因果 conv1d（single token：kernel 个窗口，不足补零）
@@ -451,10 +456,12 @@ impl GatedDeltaNet {
                 }
             }
         }
+        println!("[fs] conv {:.3}s", t0.elapsed().as_secs_f64());
         let qkv_pre = linear_vec(x, &self.in_proj_qkv, c);   // (c)
         for ch in 0..c {
             conv_in[(kernel - 1) * c + ch] = qkv_pre[ch];
         }
+        println!("[fs] qkv {:.3}s", t0.elapsed().as_secs_f64());
         // conv1d + silu
         let mut qkv = vec![0.0f32; c];
         for ch in 0..c {
@@ -496,6 +503,7 @@ impl GatedDeltaNet {
         let vt = Tensor::from_vec(1, self.value_dim, v);
         let gt = Tensor::from_vec(1, self.key_dim, g);
         let bt = Tensor::from_vec(1, self.key_dim, beta);
+        println!("[fs] pre-rec {:.3}s", t0.elapsed().as_secs_f64());
         let (core, new_rec) = recurrent_delta_rule(
             &qt, &kt, &vt, &gt, &bt, rec_state, self.num_k_heads, kd, vd);
         // gated norm：core * silu(z) → out_proj
@@ -504,11 +512,13 @@ impl GatedDeltaNet {
             gated[i] = core.get(0, i) * (z[i] / (1.0 + (-z[i]).exp()));
         }
         let out = linear_vec(&Tensor::from_vec(1, self.value_dim, gated), &self.out_w, self.hidden);
+        println!("[fs] 耗时 {:.3}s", t0.elapsed().as_secs_f64());
         (Tensor::from_vec(1, self.hidden, out), new_conv, new_rec)
     }
 
     /// prefill：逐 token recurrent（与 chunk 数学等价；chunk 加速为后续）。
     pub fn forward(&self, x: &Tensor) -> Tensor {
+        println!("[GDN] forward enter rows={}", x.rows);
         let l = x.rows;
         let mut conv: Option<Vec<f32>> = None;
         let mut rec: Option<Vec<f32>> = None;

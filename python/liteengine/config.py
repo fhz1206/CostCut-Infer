@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from re import match
 from tomllib import loads
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 __all__ = ["EngineConfig", "ModelConfig", "InferenceConfig", "ChatConfig"]
@@ -32,6 +32,8 @@ class ModelConfig:
     path: str = ""                   # 模型目录；留空默认 models/<name>
     expert_cache_max: int = 128      # 专家反量化缓存上限（条目，每条约 12MB）
     dspark_model: str = ""           # 投机解码草稿模型目录；留空 = 禁用投机（标准自回归）
+    rope_type: str = "default"       # RoPE 类型：default（标准）/ yarn（YaRN 长文本外推）
+    rope_scaling: dict = field(default_factory=dict)   # YaRN 外推参数（如 {"factor": 2.0}）
 
     @property
     def model_dir(self) -> str:
@@ -69,6 +71,7 @@ class InferenceConfig:
     expert_parallel: bool = False         # 专家多线程并行（本机实测慢 ~5 倍——默认关，他机可试）
     int4_fused_matmul: bool = False       # int4 融合 matmul（本机实测慢——默认关，他机可试）
     speculate: bool = False               # 投机解码（本机实测慢——默认关；/speculate 可运行时切换）
+    layer_offload: bool = False           # AirLLM 风格层级卸载（层前向后释放专家缓存——降内存峰值）
 
 
 @dataclass
@@ -76,6 +79,16 @@ class ChatConfig:
     max_history: int = 20
     auto_save_history: bool = False
     history_file: str = ".chat_history.json"
+
+
+@dataclass
+class DeviceConfig:
+    """设备推荐配置（engine.toml [device]——kind 切换推荐值；优化开关默认关——本机实测）。"""
+    kind: str = "cpu"                 # 设备类型：cpu / gpu / npu
+    threads: int = 0                  # 推理线程数（0 = 自动；CPU 推荐物理核数）
+    fp16: bool = False                # fp16 计算（GPU/NPU 推荐 true）
+    fused_matmul: bool = False        # int4 融合 matmul（GPU/NPU 推荐 true——CPU 需真实转置适配后开启）
+    expert_parallel: bool = False     # 专家多线程并行（多核/异构推荐 true——本机实测慢）
 
 
 class EngineConfig:
@@ -113,6 +126,8 @@ class EngineConfig:
                 path=str(m.get("path", "")),
                 expert_cache_max=int(m.get("expert_cache_max", 128)),
                 dspark_model=str(m.get("dspark_model", "")),
+                rope_type=str(m.get("rope_type", "default")),
+                rope_scaling=dict(m.get("rope_scaling", {})),
             )
 
         if self.default_model and self.default_model not in self.models:
@@ -136,6 +151,7 @@ class EngineConfig:
             expert_parallel=bool(inf.get("expert_parallel", False)),
             int4_fused_matmul=bool(inf.get("int4_fused_matmul", False)),
             speculate=bool(inf.get("speculate", False)),
+            layer_offload=bool(inf.get("layer_offload", False)),
         )
 
         chat = data.get("chat", {})
@@ -143,6 +159,15 @@ class EngineConfig:
             max_history=int(chat.get("max_history", 20)),
             auto_save_history=bool(chat.get("auto_save_history", False)),
             history_file=str(chat.get("history_file", ".chat_history.json")),
+        )
+
+        dev = data.get("device", {})
+        self.device = DeviceConfig(
+            kind=str(dev.get("kind", "cpu")),
+            threads=int(dev.get("threads", 0)),
+            fp16=bool(dev.get("fp16", False)),
+            fused_matmul=bool(dev.get("fused_matmul", False)),
+            expert_parallel=bool(dev.get("expert_parallel", False)),
         )
 
     def get_model_config(self, name: str) -> ModelConfig:

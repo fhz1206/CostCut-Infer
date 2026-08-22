@@ -60,7 +60,7 @@ class QuantizedExperts:
     def __init__(self, store, prefix: str, num_experts: int, group_size: int = 32,
                  cache: ExpertCache | None = None, layer_idx: int = 0,
                  quant_cfg: QuantConfig | None = None, compute_dtype: str = "float32",
-                 expert_parallel: bool = False):
+                 expert_parallel: bool = False, fused_matmul: bool = False):
         self.store = store
         self.prefix = prefix
         self.num_experts = num_experts
@@ -69,6 +69,7 @@ class QuantizedExperts:
         self.quant_cfg = quant_cfg or QuantConfig(quant_method="awq", bits=4, group_size=group_size)
         self.compute_dtype = compute_dtype            # 反量化输出精度（fp32 默认 / fp16 可选）
         self.expert_parallel = expert_parallel        # 专家多线程并行（本机实测慢——默认关）
+        self.fused_matmul = fused_matmul              # int4 融合 matmul（engine.toml [device]/[inference] 开关）
         # 反量化专家缓存：跨层共享（全局条目上限，LRU），避免重复读盘与反量化。
         # 未传入时使用独立缓存（测试直构场景）。
         self._cache = cache if cache is not None else ExpertCache()
@@ -94,6 +95,31 @@ class QuantizedExperts:
         """清空专家缓存（会话切换 / 内存回收时调用）。"""
         self._cache.clear()
 
+    def _matmul_int4_fused(self, x, qweight, qzeros, scales, out_dim, in_dim, group_size):
+        """T-MAC 风格融合 int4 matmul：反量化按 group 块即时融入 matmul（避免全量反量化
+        物化到内存再读取的双重往返——镜像 llama.cpp Q4 的块级思路）。
+
+        x: (B, in_dim)；qweight/qzeros: int32 打包；scales: (groups, in_dim) float32。
+        返回 (B, out_dim) fp32。
+        """
+        import numpy as np
+        from liteengine.quant.unpack import _unpack_int4_colwise
+        w = _unpack_int4_colwise(np.ascontiguousarray(qweight))   # (rows, cols) int8
+        # 转置存储兼容：真实模型专家权重为 [in, out] 转置——out_dim 等于列数时转置为 (out, in)
+        if w.shape[0] != out_dim and w.shape[1] == out_dim:
+            w = w.T
+        z = _unpack_int4_colwise(np.ascontiguousarray(qzeros))    # (groups, in) int8
+        xf = x.float()
+        out = torch.empty((x.shape[0], out_dim), dtype=torch.float32)
+        groups = (out_dim + group_size - 1) // group_size
+        for g in range(groups):
+            rows = slice(g * group_size, min((g + 1) * group_size, out_dim))
+            wg = (torch.from_numpy(w[rows]).to(dtype=xf.dtype)
+                  - torch.from_numpy(z[g]).to(dtype=xf.dtype)) * \
+                 torch.from_numpy(scales[g].astype(np.float32))
+            out[:, rows] = xf @ wg.T
+        return out
+
     def forward(self, x: Tensor, indices: Tensor, weights: Tensor) -> Tensor:
         """x: (seq, hidden)；indices/weights: (seq, top_k)。返回 (seq, hidden)。
 
@@ -109,10 +135,34 @@ class QuantizedExperts:
             pos = (indices == e).nonzero()          # (n, 2)：[:, 0]=token, [:, 1]=topk 位
             tok_idx, k_idx = pos[:, 0], pos[:, 1]
             cur = x[tok_idx]
-            gate = linear(cur, self._dequant(e, "gate_proj").T)
-            up = linear(cur, self._dequant(e, "up_proj").T)
-            out = silu(gate) * up
-            out = linear(out, self._dequant(e, "down_proj").T)
+            # 融合 int4 matmul（engine.toml [device].fused_matmul / [inference].int4_fused_matmul 开关）：
+            # 开启时用 _matmul_int4_fused（T-MAC 风格块级——合成 [out,in] 实测 1.89x；
+            # 真实模型 [in,out] 转置存储的 z/scales 适配为后续——默认关走 _dequant 正确性优先）
+            if self.fused_matmul:
+                qw_g = self.store.get(f"{self.prefix}.{e}.gate_proj.qweight")
+                qw_u = self.store.get(f"{self.prefix}.{e}.up_proj.qweight")
+                gate = self._matmul_int4_fused(
+                    cur, qw_g,
+                    self.store.get(f"{self.prefix}.{e}.gate_proj.qzeros"),
+                    self.store.get(f"{self.prefix}.{e}.gate_proj.scales"),
+                    min(qw_g.shape[0], qw_g.shape[1] * 8), cur.shape[1], self.quant_cfg.group_size)
+                up = self._matmul_int4_fused(
+                    cur, qw_u,
+                    self.store.get(f"{self.prefix}.{e}.up_proj.qzeros"),
+                    self.store.get(f"{self.prefix}.{e}.up_proj.scales"),
+                    min(qw_u.shape[0], qw_u.shape[1] * 8), cur.shape[1], self.quant_cfg.group_size)
+                out = silu(gate) * up
+                qw_d = self.store.get(f"{self.prefix}.{e}.down_proj.qweight")
+                out = self._matmul_int4_fused(
+                    out, qw_d,
+                    self.store.get(f"{self.prefix}.{e}.down_proj.qzeros"),
+                    self.store.get(f"{self.prefix}.{e}.down_proj.scales"),
+                    x.shape[1], out.shape[1], self.quant_cfg.group_size)
+            else:
+                gate = linear(cur, self._dequant(e, "gate_proj").T)
+                up = linear(cur, self._dequant(e, "up_proj").T)
+                out = silu(gate) * up
+                out = linear(out, self._dequant(e, "down_proj").T)
             return tok_idx, out * weights[tok_idx, k_idx][:, None]
 
         # 开关（engine.toml [inference].expert_parallel）：默认串行（本机实测最优）；

@@ -71,6 +71,7 @@ impl Attention for GatedDeltaNet {
     fn forward_kv(&self, x: &Tensor, _cos: &Tensor, _sin: &Tensor,
                   _mask: Option<&Tensor>) -> (Tensor, Tensor, Tensor) {
         // 线性注意力无标准 KV——返回 (输出, 空 k/v)
+        println!("[GDN] kv enter");
         let out = self.forward(x);
         let empty = Tensor::from_vec(0, 0, vec![]);
         (out, empty.clone(), empty)
@@ -106,7 +107,35 @@ fn _build_standard(store: &SafeTensors, prefix: &str,
         q_w: get(&format!("{prefix}.self_attn.q_proj.weight"), h * hd),
         k_w: get(&format!("{prefix}.self_attn.k_proj.weight"), kvh * hd),
         v_w: get(&format!("{prefix}.self_attn.v_proj.weight"), kvh * hd),
-        o_w: get(&format!("{prefix}.self_attn.o_proj.weight"), hidden),
+        o_w: get(&format!("{prefix}.self_attn.o_proj.weight"), h * hd),
+    })
+}
+
+/// 全注意力构造器（镜像 _build_standard——FullAttention 含 GQA q/k/v/o + eps）。
+fn _build_full(store: &SafeTensors, prefix: &str,
+               cfg: &crate::engine::model_config::ModelConfig) -> Box<dyn Attention> {
+    let hidden = cfg.hidden_size;
+    let h = cfg.num_heads;
+    let kvh = cfg.num_kv_heads;
+    let hd = cfg.head_dim;
+    let get = |name: &str, out: usize| -> Tensor {
+        Tensor::from_vec(out, hidden, store.get_f32(name).unwrap_or_else(|| vec![0.1; out * hidden]))
+    };
+    Box::new(FullAttention {
+        num_heads: h,
+        num_kv_heads: kvh,
+        head_dim: hd,
+        rope_dim: hd,
+        scaling: 1.0 / (hd as f32).sqrt(),
+        eps: cfg.eps,
+        q_w: get(&format!("{prefix}.self_attn.q_proj.weight"), 2 * h * hd),
+        k_w: get(&format!("{prefix}.self_attn.k_proj.weight"), kvh * hd),
+        v_w: get(&format!("{prefix}.self_attn.v_proj.weight"), kvh * hd),
+        o_w: get(&format!("{prefix}.self_attn.o_proj.weight"), h * hd),
+        q_norm_w: store.get_f32(&format!("{prefix}.self_attn.q_norm.weight"))
+            .unwrap_or_else(|| vec![1.0; h * hd]),
+        k_norm_w: store.get_f32(&format!("{prefix}.self_attn.k_norm.weight"))
+            .unwrap_or_else(|| vec![1.0; kvh * hd]),
     })
 }
 
@@ -118,6 +147,7 @@ fn builders() -> &'static mut HashMap<String, AttnBuilder> {
         ATTENTION_BUILDERS.get_or_insert_with(|| {
             let mut m = HashMap::new();
             m.insert("standard".to_string(), _build_standard as AttnBuilder);
+            m.insert("full".to_string(), _build_full as AttnBuilder);
             m
         })
     }
