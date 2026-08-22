@@ -57,6 +57,41 @@ pub fn unpack_int4_colwise(packed: &[i32], cols: usize) -> Vec<u8> {
 /// AWQ 4bit 反量化：返回 `[out, in]` 的 f32 权重矩阵。
 ///
 /// - `qweight`: `[out, in/8]` i32 打包权重
+/// AWQ int4 反量化→matmul 融合内核（参考 llama.cpp 块级思路——按 group 块反量化即时乘加，
+/// 避免全量反量化物化到内存再读取的双重往返）。x (B, in)；返回 (B, out)。
+pub fn matmul_awq_fused(x: &[f32], qweight: &[i32], qzeros: &[i32], scales: &[f32],
+                        out: usize, in_: usize, group_size: usize) -> Vec<f32> {
+    assert!(in_ % 8 == 0, "in 维度须为 8 的倍数");
+    let w = unpack_int4_colwise(qweight, in_ / 8);
+    let z = unpack_int4_colwise(qzeros, in_ / 8);
+    let groups = out / group_size;
+    let b = x.len() / in_;
+    let mut result = vec![0.0f32; b * out];
+    let mut deq_row = vec![0.0f32; in_];   // 复用（避免每行分配）
+    for g in 0..groups {
+        let zg = g * in_;
+        let r_hi = ((g + 1) * group_size).min(out);
+        for r in g * group_size..r_hi {
+            let wr = r * in_;
+            let wrow = &w[wr..wr + in_];
+            let zrow = &z[zg..zg + in_];
+            let srow = &scales[zg..zg + in_];
+            for c in 0..in_ {
+                deq_row[c] = (wrow[c] as i32 - zrow[c] as i32) as f32 * srow[c];
+            }
+            for bi in 0..b {
+                let xrow = &x[bi * in_..(bi + 1) * in_];
+                let mut acc = 0.0f32;
+                for c in 0..in_ {
+                    acc += xrow[c] * deq_row[c];
+                }
+                result[bi * out + r] = acc;
+            }
+        }
+    }
+    result
+}
+
 /// - `qzeros`:  `[out/group_size, in/8]` i32 打包零点
 /// - `scales`:  `[out/group_size, in]` f32 缩放
 pub fn dequantize_awq(qweight: &[i32], qzeros: &[i32], scales: &[f32],
@@ -361,3 +396,4 @@ mod tests {
         assert!((fp8e[0] - 3.0).abs() < 1e-5);
     }
 }
+

@@ -78,8 +78,8 @@ impl Tensor {
                 }
             });
         } else {
-            // 分块优化（参考 llama.cpp——kk 外层分块提升缓存局部性；m=1 时即 lm_head 的 (1,k)@(k,大n)）
-            const BK: usize = 512;   // kk 分块大小
+            // 实测：AVX2/列并行/分块+多线程 均慢于纯标量（列访问缓存不友好——lm_head 6.26s vs 标量 3.5s）
+            const BK: usize = 512;   // kk 分块（缓存局部性——无显著收益但无害）
             for i in 0..m {
                 for k0 in (0..k).step_by(BK) {
                     let k1 = (k0 + BK).min(k);
