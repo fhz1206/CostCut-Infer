@@ -38,8 +38,11 @@ class ModelConfig:
     @property
     def model_dir(self) -> str:
         """模型实际目录：统一到 python/models 前缀（models 目录位于 python/ 下）。
-        兼容旧写法（path="models/<name>" 自动归一化为 python/models/<name>）。"""
+        兼容旧写法（path="models/<name>" 自动归一化为 python/models/<name>）；
+        支持绝对路径（path 为绝对路径时直接使用，不做前缀归一化）。"""
         p = self.path or f"python/models/{self.name}"
+        if Path(p).is_absolute():
+            return p  # 绝对路径直接使用
         if p.startswith("models/") and not p.startswith("python/models/"):
             p = f"python/{p}"
         return p

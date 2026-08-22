@@ -68,3 +68,12 @@ test_config/
 llama.cpp/
 # 本地AirLLM克隆
 airllm/
+python/c10.dll
+python/uv.dll
+python torch.dll
+python/torch_cpu.dll
+python/torch_global_deps.dll
+python/asmjit.dll
+python/fbgemm.dll
+python/libiomp5md.dll
+python/libiompstubs5md.dll

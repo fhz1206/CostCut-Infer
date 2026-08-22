@@ -48,7 +48,7 @@ top_p = 0.9                # nucleus 采样：仅从累计概率 top_p 的 token
 top_k = 0                  # 采样时只保留前 top_k 个候选（0 表示关闭）
 repetition_penalty = 1   # 重复惩罚：>1 抑制重复，=1 不干预
 max_new_tokens = 2048      # 单次回复的最大新 token 数（通常由 <|im_end|> 提前结束）
-system_prompt = "你是一个编程助手"   # 系统提示词（对话开头注入）
+system_prompt = ""                   # 系统提示词（空——不注入系统提示）
 
 # 精度 / 优化开关（本机实测部分优化反而变慢——默认关闭，他机 / 其它精度模型可开启尝试）
 compute_dtype = "float32"      # 计算精度：fp32（本机 CPU 实测最优）/ fp16 / bf16（可选）

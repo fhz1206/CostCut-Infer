@@ -70,6 +70,7 @@ class ChatSession:
 
     def __init__(self, engine_config: EngineConfig, model_name: Optional[str] = None):
         self.config = engine_config
+        self._cfg = engine_config   # 兼容 _get_model 的 self._cfg.inference.layer_offload 使用
         self.model_name = model_name or engine_config.default_model
         self.model_cfg = self.config.get_model_config(self.model_name)
         self.history: list[dict[str, str]] = []
