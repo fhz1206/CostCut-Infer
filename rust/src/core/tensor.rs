@@ -112,6 +112,52 @@ impl Tensor {
         Tensor { rows: self.rows, cols: rhs.cols, data }
     }
 
+    /// linear（镜像 PyTorch `at::native::linear` = `addmm(bias, input, weight.t())`——
+    /// BLAS GEMM——权重 (out, in)——self (B, in)→ (B, out)；bias 可选。
+    /// 参考 pytorch/aten/src/ATen/native/Linear.cpp:85-108。
+    pub fn linear_blas(&self, weight: &Tensor, bias: Option<&Tensor>) -> Tensor {
+        assert_eq!(self.cols, weight.cols, "linear 形状不匹配: (B,in)@(out,in)");
+        let a = tch::Tensor::from_slice(&self.data)
+            .reshape([self.rows as i64, self.cols as i64]);
+        let b = tch::Tensor::from_slice(&weight.data)
+            .reshape([weight.rows as i64, weight.cols as i64]);
+        // addmm 语义：input @ weight.T（BLAS transb——无显式转置拷贝）
+        let mut c = a.matmul(&b.transpose(0, 1));
+        if let Some(bias) = bias {
+            let bias_t = tch::Tensor::from_slice(&bias.data);
+            c = c + bias_t;
+        }
+        let data: Vec<f32> = c.flatten(0, -1).try_into().unwrap();
+        Tensor { rows: self.rows, cols: weight.rows, data }
+    }
+
+    /// matmul 带 alpha/beta 累加（镜像 PyTorch `addmm`：out = beta·out + alpha·(a@b)——
+    /// 参考 aten/src/ATen/native/cpu/BlasKernel.cpp 的 scale_ 语义；对残差/混合累加有用）。
+    pub fn matmul_add(&self, rhs: &Tensor, out: &mut Tensor, alpha: f32, beta: f32) {
+        assert_eq!(self.cols, rhs.rows, "matmul 形状不匹配");
+        assert_eq!((self.rows, rhs.cols), (out.rows, out.cols), "out 形状不匹配");
+        let (m, k, n) = (self.rows, self.cols, rhs.cols);
+        // 先按 beta 缩放已有输出（beta==0 可跳过）
+        if beta != 1.0 {
+            for v in out.data.iter_mut() {
+                *v *= beta;
+            }
+        }
+        for i in 0..m {
+            for kk in 0..k {
+                let a = self.data[i * k + kk];
+                if a == 0.0 {
+                    continue;
+                }
+                let row = i * n;
+                let b_row = kk * n;
+                for j in 0..n {
+                    out.data[row + j] += alpha * a * rhs.data[b_row + j];
+                }
+            }
+        }
+    }
+
     /// 并行 matmul（std::thread::scope 按行分块，纯 std 无外部依赖）。
     pub fn matmul_par(&self, rhs: &Tensor, threads: usize) -> Tensor {
         assert_eq!(self.cols, rhs.rows, "matmul 形状不匹配");
@@ -527,3 +573,4 @@ mod tests {
         assert!(max_err < 1e-3, "AVX2 matmul 不等价, max_err={max_err}");
     }
 }
+

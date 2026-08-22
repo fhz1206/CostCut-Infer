@@ -86,11 +86,36 @@ class ChatConfig:
 
 @dataclass
 class DeviceConfig:
-    """设备推荐配置（engine.toml [device]——kind 切换推荐值；优化开关默认关——本机实测）。"""
-    kind: str = "cpu"                 # 设备类型：cpu / gpu / npu
+    """设备推荐配置（engine.toml [device]——kind 切换推荐值；优化开关默认关——本机实测）。
+    设备类型：cpu / gpu（CUDA）/ npu（昇腾）/ apu（AMD ROCm）。"""
+
+    @staticmethod
+    def detect_device() -> str:
+        """自动检测可用设备：优先 CUDA（GPU）→ NPU（昇腾 torch_npu）→ ROCm（APU）→ CPU。"""
+        try:
+            import torch
+            if torch.cuda.is_available():
+                return "gpu"
+        except Exception:
+            pass
+        try:
+            import torch_npu  # noqa: F401——昇腾 NPU
+            if torch_npu.npu.is_available():
+                return "npu"
+        except Exception:
+            pass
+        try:
+            import torch
+            if torch.version.hip is not None:  # AMD ROCm（APU/GPU）
+                return "apu"
+        except Exception:
+            pass
+        return "cpu"
+
+    kind: str = "cpu"                 # 设备类型：cpu / gpu / npu / apu（"" 自动检测）
     threads: int = 0                  # 推理线程数（0 = 自动；CPU 推荐物理核数）
-    fp16: bool = False                # fp16 计算（GPU/NPU 推荐 true）
-    fused_matmul: bool = False        # int4 融合 matmul（GPU/NPU 推荐 true——CPU 需真实转置适配后开启）
+    fp16: bool = False                # fp16 计算（GPU/NPU/APU 推荐 true）
+    fused_matmul: bool = False        # int4 融合 matmul（GPU/NPU/APU 推荐 true——CPU 需真实转置适配后开启）
     expert_parallel: bool = False     # 专家多线程并行（多核/异构推荐 true——本机实测慢）
 
 

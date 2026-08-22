@@ -70,7 +70,7 @@ llama.cpp/
 airllm/
 python/c10.dll
 python/uv.dll
-python torch.dll
+python/torch.dll
 python/torch_cpu.dll
 python/torch_global_deps.dll
 python/asmjit.dll

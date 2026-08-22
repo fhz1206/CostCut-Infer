@@ -11,6 +11,7 @@ use std::fs;
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
     pub arch: String,            // 架构名（mixtral/qwen3_moe/glm_moe/deepseek_moe/.../generic）
+    pub kind: String,            // 设备类型：cpu/gpu/npu/apu（CPU 默认——tch CUDA 可扩展）
     pub hidden_size: usize,
     pub num_layers: usize,
     pub num_heads: usize,
@@ -53,6 +54,15 @@ fn fnum(fields: &HashMap<String, String>, key: &str, default: f32) -> f32 {
 }
 
 /// 读取并归一化模型配置（架构探测 + 通用回退）。
+/// 设备自动检测（tch 只支持 CPU/CUDA 两级——NPU/ROCm 无 tch 后端——诚实）。
+pub fn detect_device() -> String {
+    if tch::Cuda::is_available() {
+        "gpu".to_string()
+    } else {
+        "cpu".to_string()
+    }
+}
+
 pub fn load_model_config(model_dir: &str) -> Result<ModelConfig, String> {
     let text = fs::read_to_string(format!("{model_dir}/config.json"))
         .map_err(|e| format!("读取 config.json 失败: {e}"))?;
@@ -93,6 +103,8 @@ pub fn load_model_config(model_dir: &str) -> Result<ModelConfig, String> {
     let eps = fnum(&fields, "rms_norm_eps", 1e-5);
     let rope_theta = fnum(&fields, "rope_theta", 1e6);
     // 架构探测（按原始文本子串；顺序 = 优先级；未命中 → 通用回退）
+    let kind = fields.get("kind").cloned().filter(|k| !k.is_empty())
+        .unwrap_or_else(detect_device);  // 设备：cpu/gpu/npu/apu（"" 自动检测——tch 两级 CUDA→CPU）
     let (arch, attention) = if raw.contains("qwen3_5") {
         ("qwen3_5_moe".into(), "linear_delta".into())
     } else if raw.contains("mixtral") {
@@ -129,7 +141,7 @@ pub fn load_model_config(model_dir: &str) -> Result<ModelConfig, String> {
         None                        // 稠密 MLP（Llama 家族 / 通用回退的稠密模型）
     };
     Ok(ModelConfig {
-        arch, hidden_size: hidden, num_layers: n_layers, num_heads: heads,
+        arch, kind, hidden_size: hidden, num_layers: n_layers, num_heads: heads,
         num_kv_heads: kvh, head_dim, eps, rope_theta, attention, moe,
         vocab_size: num(&fields, "vocab_size", 0),
         weight_prefix: "model.language_model".to_string(),

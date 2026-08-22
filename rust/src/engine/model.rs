@@ -18,6 +18,7 @@ pub struct Model {
     pub layers: Vec<DecoderLayer>,
     pub final_norm_w: Vec<f32>,
     pub lm_head: Tensor,        // (vocab, hidden)
+    pub lm_head_t: Tensor,       // (hidden, vocab) 预转置——列连续缓存友好（省每 token 转置拷贝）
 }
 
 impl Model {
@@ -219,6 +220,7 @@ impl Model {
             embed,
             layers,
             final_norm_w,
+            lm_head_t: lm_head.transpose(),
             lm_head,
         })
     }
@@ -257,7 +259,7 @@ impl Model {
         }
         let t2 = std::time::Instant::now();
         let h = rms_norm(&h, &self.final_norm_w, self.eps);
-        let out = h.matmul(&self.lm_head.transpose());     // (L, vocab)
+        let out = h.matmul(&self.lm_head_t);     // (L, vocab)
         println!("[prefill] embed {:.2}s layers {:.2}s lm_head {:.2}s",
                  t1.elapsed().as_secs_f64(), t2.elapsed().as_secs_f64(),
                  t2.elapsed().as_secs_f64() - t1.elapsed().as_secs_f64());
@@ -371,7 +373,7 @@ impl Model {
         let mut out = Vec::new();
         for _ in 0..max_new_tokens {
             let t_lm = std::time::Instant::now();
-            let logits = h.matmul(&self.lm_head.transpose());       // (1, vocab)
+            let logits = h.matmul(&self.lm_head_t);       // (1, vocab)
             let last = &logits.data[..logits.cols];
             let tok = if temperature <= 0.0 {
                 crate::engine::sampling::argmax_row(last)
@@ -402,6 +404,7 @@ impl Model {
             embed,
             layers,
             final_norm_w,
+            lm_head_t: lm_head.transpose(),
             lm_head,
         }
     }
@@ -424,6 +427,7 @@ mod tests {
             layers: vec![],
             final_norm_w: vec![1.0; hidden],
             lm_head: Tensor::from_vec(vocab, hidden, vec![0.1; vocab * hidden]),
+            lm_head_t: Tensor::from_vec(hidden, vocab, vec![0.1; hidden * vocab]),
         };
         let ids = [1usize, 2, 3];
         let logits = model.prefill(&ids);
