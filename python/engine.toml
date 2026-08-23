@@ -53,7 +53,7 @@ system_prompt = ""                   # 系统提示词（空——不注入系�
 # 精度 / 优化开关（本机实测部分优化反而变慢——默认关闭，他机 / 其它精度模型可开启尝试）
 compute_dtype = "float32"      # 计算精度：fp32（本机 CPU 实测最优）/ fp16 / bf16（可选）
 expert_parallel = false        # 专家多线程并行（本机实测慢 ~5 倍——默认关，他机可试）
-int4_fused_matmul = false      # int4 融合 matmul（CPU 合成场景实测 1.89x——真实模型转置适配后开启）
+int4_fused_matmul = true       # int4 融合 matmul（CPU 合成场景实测 1.89x——真实模型 z 转置适配已修复——开启）
 speculate = false              # 投机解码（本机实测慢——默认关；/speculate 可运行时切换）
 layer_offload = false          # AirLLM 风格层级卸载（层前向后释放专家缓存——降内存峰值；换层重反量化略慢）
 
@@ -83,3 +83,12 @@ history_file = ".chat_history.json"   # 历史记录文件路径
 speculate = false                 # 投机解码（dspark 草稿——加速生成；本机实测慢——默认关）
 streaming = true                  # 流式输出（逐 token 打印——CLI/TUI）
 layer_offload = false             # 层级 offload（AirLLM 风格——释放专家反量化缓存——真实 61 层防 OOM）
+
+# ===== PagedAttention（参考 vLLM——分页 KV 缓存，用户可调）=====
+[paging]
+num_blocks = 1024          # 物理块数（越大 KV 容量越大——内存占用越高）
+block_size = 32            # 每块 token 数（vLLM 默认 16——32 减少块表开销）
+
+# ===== continuous batching（参考 vLLM——请求批处理，用户可调）=====
+[batching]
+enable = true              # 请求入队/批处理调度（并发请求吞吐）

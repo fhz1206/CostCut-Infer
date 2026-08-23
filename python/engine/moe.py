@@ -106,9 +106,10 @@ class QuantizedExperts:
         from quant.unpack import _unpack_int4_colwise
         w = _unpack_int4_colwise(np.ascontiguousarray(qweight))   # (rows, cols) int8
         # 转置存储兼容：真实模型专家权重为 [in, out] 转置——out_dim 等于列数时转置为 (out, in)
+        z = _unpack_int4_colwise(np.ascontiguousarray(qzeros))    # (groups, in) int8
         if w.shape[0] != out_dim and w.shape[1] == out_dim:
             w = w.T
-        z = _unpack_int4_colwise(np.ascontiguousarray(qzeros))    # (groups, in) int8
+            z = z.T  # qzeros 同步转置——(in, groups)——与 w[rows] 广播匹配
         xf = x.float()
         out = torch.empty((x.shape[0], out_dim), dtype=torch.float32)
         groups = (out_dim + group_size - 1) // group_size

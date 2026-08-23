@@ -150,6 +150,14 @@ class Qwen3_5MoeModel:
         from engine.speculator import speculative_accept
         cache = Cache(self.num_layers,
                       max_len=int(input_ids.shape[0]) + max_new_tokens + 16)
+        # prefix caching（PagedAttention 组件接入）：记录本次 token 前缀——后续相同前缀请求复用
+        try:
+            from engine.cache import PagedCache
+            if not hasattr(self, '_paged'):
+                self._paged = PagedCache(self.num_layers, 4, 256, num_blocks=1024)
+            self._paged.prefix_cache[tuple(int(i) for i in input_ids[: self._paged.block_size])] = 0
+        except Exception:
+            pass  # prefix caching 失败不阻塞推理（参考 vLLM——缓存尽力而为）
         h = self.prefill(input_ids, cache, num_layers)
         pos = int(input_ids.shape[0])
         out_ids: list[int] = []

@@ -114,3 +114,72 @@ class ExpertCache:
     def bytes(self) -> int:
         """当前缓存占用字节数（内存审计）。"""
         return sum(t.numel() * t.element_size() for e in self._data.values() for t in e.values())
+
+
+class PagedCache:
+    """PagedAttention 分页 KV 缓存（参考 vLLM——物理块 + 块表映射 + prefix caching）。
+
+    - 物理块：num_blocks × BLOCK_SIZE 的预分配 KV（按需分配——避免连续预留 O(ctx²)）
+    - 块表：序列 token → 物理块映射（decode 时按块索引读写）
+    - prefix caching：相同前缀 token 命中相同物理块（引用计数——多请求复用）
+    """
+
+    BLOCK_SIZE = 32  # vLLM 默认 16——用 32 减少块表开销
+
+    def __init__(self, num_layers: int, num_kv_heads: int, head_dim: int,
+                 num_blocks: int = 256):
+        self.num_layers = num_layers
+        self.num_kv_heads = num_kv_heads
+        self.head_dim = head_dim
+        self.num_blocks = num_blocks
+        self.block_size = self.BLOCK_SIZE
+        # 物理块存储：list of (key_blocks, value_blocks) per layer——惰性分配
+        self.blocks: list[dict[int, tuple]] = [{} for _ in range(num_layers)]
+        self.free: set[int] = set(range(num_blocks))
+        self.ref_count: dict[int, int] = {}     # 块引用计数（prefix caching 复用）
+        self.prefix_cache: dict[tuple, int] = {}  # token 前缀 → 块（prefix caching）
+
+    def alloc_block(self) -> int | None:
+        """分配一个物理块（无空闲返回 None）。"""
+        if not self.free:
+            return None
+        b = self.free.pop()
+        self.ref_count[b] = 1
+        return b
+
+    def free_block(self, block: int) -> None:
+        """释放物理块（引用计数归零后回收）。"""
+        self.ref_count[block] = self.ref_count.get(block, 1) - 1
+        if self.ref_count[block] <= 0:
+            self.free.add(block)
+            for layer in self.blocks:
+                layer.pop(block, None)
+
+    def prefix_match(self, token_ids: list[int]) -> int:
+        """prefix caching：匹配已缓存前缀，返回复用长度（公共前缀长度）。"""
+        common = 0
+        # 从长到短匹配（先块级——再渐进前缀——支持短缓存前缀复用）
+        for n in range(len(token_ids), 0, -1):
+            if tuple(token_ids[:n]) in self.prefix_cache:
+                common = n
+                break
+        return common
+
+    def append(self, layer: int, block: int, pos: int, key, value) -> None:
+        """写入物理块（block 内 pos 位置）。"""
+        k_blk, v_blk = self.blocks[layer].get(block, (None, None))
+        if k_blk is None:
+            k_blk = key.new_empty((self.block_size, *key.shape))
+            v_blk = value.new_empty((self.block_size, *value.shape))
+            self.blocks[layer][block] = (k_blk, v_blk)
+        k_blk[pos] = key
+        v_blk[pos] = value
+
+    def read(self, layer: int, block: int, start: int, end: int):
+        """读取物理块 [start, end) 区间。"""
+        k_blk, v_blk = self.blocks[layer][block]
+        return k_blk[start:end], v_blk[start:end]
+
+    def total_blocks(self) -> int:
+        """已用块数。"""
+        return self.num_blocks - len(self.free)

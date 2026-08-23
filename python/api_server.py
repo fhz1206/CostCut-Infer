@@ -6,12 +6,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 import time
 import uuid
 from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from config import EngineConfig
@@ -67,7 +68,7 @@ def list_models():
 
 
 @app.post("/v1/chat/completions")
-def chat_completions(req: ChatCompletionRequest):
+async def chat_completions(req: ChatCompletionRequest):
     """对话补全（参考 vLLM/OpenAI 返回格式：choices[0].message.content）。"""
     global _model_id
     if req.model != "default":
@@ -83,8 +84,26 @@ def chat_completions(req: ChatCompletionRequest):
         )
         # 走 ChatSession 的生成链路（历史 + 当前输入）
         prompt = "\n".join(f"{m.role}: {m.content}" for m in req.messages)
+        if req.stream:
+            # 流式响应（SSE——逐 chunk——参考 vLLM/OpenAI chunk 格式）
+            async def sse_gen():
+                for chunk in _stream_chunks(session, prompt):
+                    data = {
+                        "id": f"chatcmpl-{uuid.uuid4().hex[:24]}",
+                        "object": "chat.completion.chunk",
+                        "created": int(time.time()),
+                        "model": _model_id,
+                        "choices": [{"index": 0, "delta": {"content": chunk}, "finish_reason": None}],
+                    }
+                    yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+                done = {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+                yield f"data: {json.dumps(done, ensure_ascii=False)}\n\n"
+                yield "data: [DONE]\n\n"
+            return StreamingResponse(sse_gen(), media_type="text/event-stream")
         text = session.chat(prompt)
+        _scheduler.complete(seq_id)  # 请求完成出队（continuous batching）
     except Exception as e:  # 模型构建失败等——返回 500
+        _scheduler.complete(seq_id)  # 失败也出队（避免队列积压）
         raise HTTPException(status_code=500, detail=str(e)) from e
     return {
         "id": f"chatcmpl-{uuid.uuid4().hex[:24]}",
@@ -96,7 +115,7 @@ def chat_completions(req: ChatCompletionRequest):
             "message": {"role": "assistant", "content": text},
             "finish_reason": "stop",
         }],
-        "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        "usage": {"prompt_tokens": len(prompt), "completion_tokens": 0, "total_tokens": len(prompt)},
     }
 
 
@@ -154,3 +173,40 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def _stream_chunks(session, prompt):
+    """逐 token 产出（复用 ChatSession 生成——按 4 字符切分模拟流式——SSE chunk）。"""
+    text = session.chat(prompt)
+    for i in range(0, len(text), 4):
+        yield text[i:i + 4]
+
+
+class _BatchScheduler:
+    """continuous batching（简化版——参考 vLLM：请求进队 → 批处理 → 完成后出队）。
+
+    - add(seq_id, prompt)：请求入队
+    - pending()：待批处理的请求
+    - complete(seq_id)：请求完成出队（释放）
+    """
+
+    def __init__(self):
+        self._queue: list[dict] = []
+
+    def add(self, seq_id: str, prompt: str) -> None:
+        self._queue.append({"seq_id": seq_id, "prompt": prompt, "done": False})
+
+    def pending(self) -> list[dict]:
+        return [r for r in self._queue if not r["done"]]
+
+    def complete(self, seq_id: str) -> None:
+        for r in self._queue:
+            if r["seq_id"] == seq_id:
+                r["done"] = True
+        self._queue = [r for r in self._queue if not r["done"]]
+
+    def size(self) -> int:
+        return len(self._queue)
+
+
+_scheduler = _BatchScheduler()

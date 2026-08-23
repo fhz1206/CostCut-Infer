@@ -127,12 +127,27 @@ class DeviceConfig:
     expert_parallel: bool = False     # 专家多线程并行（多核/异构推荐 true——本机实测慢）
 
 
+@dataclass
+class PagingConfig:
+    """PagedAttention 分页 KV 参数（engine.toml [paging]——用户可调）。"""
+    num_blocks: int = 1024
+    block_size: int = 32
+
+
+@dataclass
+class BatchingConfig:
+    """continuous batching 参数（engine.toml [batching]——用户可调）。"""
+    enable: bool = True
+
+
 class EngineConfig:
     """liteengine 的 engine.toml 解析器。"""
 
     def __init__(self, config_path: str | Path = ""):
         # 默认定位到本文件同目录的 engine.toml（脚本相对——从任意 cwd 运行都可用）
         self.config_path = Path(config_path) if config_path else Path(__file__).parent / "engine.toml"
+        self.paging = PagingConfig()
+        self.batching = BatchingConfig()
         self.default_model: str = ""
         self.models: dict[str, ModelConfig] = {}
         self.inference = InferenceConfig()
@@ -145,6 +160,11 @@ class EngineConfig:
         with open(self.config_path, "r", encoding="utf-8") as f:
             data = loads(_normalize_model_tables(f.read()))
         feat = data.get("features", {})
+        pg = data.get("paging", {})
+        self.paging = PagingConfig(num_blocks=int(pg.get("num_blocks", 1024)),
+                                   block_size=int(pg.get("block_size", 32)))
+        bt = data.get("batching", {})
+        self.batching = BatchingConfig(enable=bool(bt.get("enable", True)))
         self.features: FeaturesConfig = FeaturesConfig(
             speculate=bool(feat.get("speculate", False)),
             streaming=bool(feat.get("streaming", True)),
