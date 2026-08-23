@@ -16,17 +16,26 @@ class ChatTUI(App):
     """TUI: select ALL params (model/device/sampling/features) then chat (all output in English)."""
 
     CSS = """
-    #title { height: 1; text-style: bold; color: #5af; }
-    .group-label { height: 1; color: #fa5; text-style: bold; margin-top: 1; }
-    OptionList { height: auto; max-height: 3; margin-bottom: 0; }
-    #start { margin-top: 1; width: 40; }
-    #hint { height: 1; color: #888; margin-top: 1; }
-    #history { height: 1fr; border: solid #555; padding: 1; overflow-y: auto; }
+    /* opencode 调研成果：tokyonight 风格——深蓝背景 + 蓝强调 + 绿成功 + 灰层次 */
+    Screen { background: #1a1b26; }
+    #brand { height: 6; content-align: center middle; background: #16161e; }
+    #brand-name { color: #7aa2f7; text-align: center; text-style: bold; }
+    #brand-tag { color: #565f89; text-align: center; }
+    .section { border: tall #414868; margin: 2 6; padding: 1 3; background: #16161e; }
+    .section-title { color: #7aa2f7; text-style: bold; text-align: center; margin-bottom: 1; }
+    OptionList { height: auto; max-height: 4; border: none; background: transparent; }
+    OptionList > .option-list--option { color: #c0caf5; }
+    OptionList > .option-list--option:hover { background: #2f334d; }
+    OptionList:focus { border: tall #7aa2f7; }
+    #start { margin: 1 6; width: 100%; background: #7aa2f7; color: #1a1b26; }
+    #start:hover { background: #9db4f0; }
+    #footer { height: 1; color: #414868; text-align: center; }
+    #history { height: 1fr; border: solid #414868; padding: 1; overflow-y: auto; }
     #input-row { height: 3; padding: 1; }
     #input { width: 1fr; }
     #send { width: 12; }
-    .user { color: #5af; }
-    .assistant { color: #af5; }
+    .user { color: #7aa2f7; }
+    .assistant { color: #9ece6a; }
     """
 
     def __init__(self, model_name: str | None = None):
@@ -40,37 +49,22 @@ class ChatTUI(App):
         }
 
     def compose(self) -> ComposeResult:
-        yield Static("CostCut Infer TUI — configure, then press Start", id="title")
-        yield Static("— Mode —", classes="group-label")
-        yield OptionList(Option("Chat mode", id="chat"), Option("Server mode (OpenAI API)", id="server"),
-                         id="mode-select")
-        yield Static("— Model —", classes="group-label")
-        # Step 1: model selection (from engine.toml)
-        from config import EngineConfig
-        cfg = EngineConfig()  # 脚本相对默认——从任意 cwd 运行都可用
-        options = []
-        for name, m in cfg.models.items():
-            note = "" if m.path else " (no path — display only)"
-            options.append(Option(f"{name}{note}", id=name))
-        if not options:
-            options.append(Option("(no models — check engine.toml [model])", id=""))
-        yield OptionList(*options, id="model-select")
-        # Step 2: device kind
-        yield Button("Start chat (all selected)", id="start", variant="primary")
-        yield Static("Select each option above, then press Start. (Ctrl+C to quit)", id="hint")
-        with Vertical(id="history"):
-            pass
-        with Vertical(id="input-row"):
-            yield Input(placeholder="Type a message… (Ctrl+C to quit)", id="input")
-            yield Button("Send", id="send")
+        with Vertical(id="brand"):
+            yield Static("CostCut Infer", id="brand-name")
+            yield Static("MoE inference engine — CPU / GPU / NPU / APU", id="brand-tag")
+        with Vertical(classes="section"):
+            yield Static("MODE", classes="section-title")
+            yield OptionList(Option("Chat — interactive conversation", id="chat"),
+                             Option("Server — OpenAI-compatible API", id="server"),
+                             id="mode-select")
+        yield Button("Start", id="start", variant="primary")
+        yield Static("Pick a mode, then press Start.  (Ctrl+C to quit)", id="footer")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Collect ALL param selections (model/device/sampling/features) into _params."""
         wid, val = event.option_list.id, event.option.id  # widget id + selected value
         if wid == "mode-select":
             self._params["mode"] = val
-        elif wid == "model-select":
-            self._model_name = val
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "start":
@@ -79,25 +73,35 @@ class ChatTUI(App):
                 self._start_server()
             else:
                 # All params selected -> enter chat (English)
-                for wid in ("mode-select", "model-select", "start"):
-                    self.query_one(f"#{wid}", OptionList if wid != "start" else Button).display = False
-                self.query_one("#title", Static).update(
-                    f"Model: {self._model_name} (parameters from engine.toml)"
-                )
+                # hide redundant home components (brand/mode/start/footer-hint) — chat page only
+                for wid in ("brand", "mode-select", "start"):
+                    self.query_one(f"#{wid}", OptionList if wid == "mode-select" else (Button if wid == "start" else Vertical)).display = False
+                self.query_one("#footer", Static).update("Chat mode — type a message below. (Ctrl+C to quit)")
+                # mount chat UI dynamically (not on home page)
+                self.mount(Vertical(id="history"))
+                self.mount(Vertical(
+                    Input(placeholder="Type a message… (Ctrl+C to quit)", id="input"),
+                    Button("Send", id="send"),
+                    id="input-row",
+                ))
                 self.query_one("#input", Input).focus()
         elif event.button.id == "send":
             self._send()
 
     def on_mount(self) -> None:
-        self.query_one("#input", Input).focus()
+        # 首页焦点在模式选择（#input 在 Start 后动态挂载——首页无输入框）
+        self.query_one("#mode-select", OptionList).focus()
 
     def _start_server(self) -> None:
         """Server mode: launch the OpenAI-compatible API service (reference vLLM)."""
-        self.query_one("#title", Static).update(
+        # hide redundant home components (brand/mode/start) — server page only
+        for wid in ("brand", "mode-select", "start"):
+            self.query_one(f"#{wid}", OptionList if wid == "mode-select" else (Button if wid == "start" else Vertical)).display = False
+        self.query_one("#footer", Static).update(
             f"Starting server (model: {self._model_name}) on http://0.0.0.0:8000 ... (Ctrl+C to stop)")
         import api_server
-        if self._model_name:
-            api_server._model_id = self._model_name
+        from config import EngineConfig
+        api_server._model_id = EngineConfig().default_model
         api_server.main()
 
     def _get_session(self):
@@ -106,13 +110,14 @@ class ChatTUI(App):
             from config import EngineConfig
             cfg = EngineConfig()  # 脚本相对默认——从任意 cwd 运行都可用
             # parameters come from engine.toml (device/sampling/features — no TUI overrides)
-            self._session = ChatSession(cfg, self._model_name or cfg.default_model)
-            self.query_one("#title", Static).update("Model building… (first time ~1-2 min)")
+            # model from toml (default_model) — no TUI selection
+            self._session = ChatSession(cfg, cfg.default_model)
+            self.query_one("#footer", Static).update("Model building… (first time ~1-2 min)")
         return self._session
 
     def _append(self, who: str, text: str) -> None:
         history = self.query_one("#history", Vertical)
-        history.mount(Static(f"{who}: {text}", classes="user" if who == "你" else "assistant"))
+        history.mount(Static(f"{who}: {text}", classes="user" if who == "You" else "assistant"))
 
 
     def on_input_submitted(self, _: Input.Submitted) -> None:
@@ -124,10 +129,10 @@ class ChatTUI(App):
         if not text:
             return
         inp.value = ""
-        self._append("你", text)
+        self._append("You", text)
         try:
             session = self._get_session()
-            self._append("助手", session.chat(text))
+            self._append("Assistant", session.chat(text))
         except Exception as e:
             self._append("错误", str(e))
 
