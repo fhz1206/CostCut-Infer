@@ -7,8 +7,8 @@ import os
 import tempfile
 import unittest
 
-from liteengine.config import EngineConfig
-from liteengine.model_config import load_model_config
+from config import EngineConfig
+from model_config import load_model_config
 
 MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"   # model_dir 归一化后（models/ 前缀 → python/models）
 

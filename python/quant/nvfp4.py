@@ -11,9 +11,9 @@ from __future__ import annotations
 import numpy as np
 from numpy import float32, ndarray
 
-from liteengine.quant.config import QuantConfig
-from liteengine.quant.fp8 import e4m3_to_f32
-from liteengine.registry import register_quant_method
+from quant.config import QuantConfig
+from quant.fp8 import e4m3_to_f32
+from engine.registry import register_quant_method
 
 __all__ = ["e2m1_to_f32", "dequantize_nvfp4"]
 

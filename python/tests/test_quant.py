@@ -13,8 +13,8 @@ import unittest
 from numpy import allclose, array_equal, asarray, empty, float16, float32, int16, int32
 from numpy.random import default_rng
 
-from liteengine.loader import WeightStore
-from liteengine.quant import (QuantConfig, _unpack_colwise, _unpack_int4_colwise,
+from io_.loader import WeightStore
+from quant import (QuantConfig, _unpack_colwise, _unpack_int4_colwise,
                               dequantize, dequantize_awq)
 
 MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"

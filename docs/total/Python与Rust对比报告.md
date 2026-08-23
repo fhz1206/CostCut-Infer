@@ -9,7 +9,7 @@
 |---|---|---|
 | 定位 | 技术探索版（新功能首发/验证），不参与发布 | 发布版（发布包永远为 Rust 版） |
 | 计算 | torch/numpy（BLAS 4 线程） | 依赖启用（candle-core 等 8 个——64 位 mingw-w64 GCC 15.3 编译；tch/libtorch 需 MSVC 暂禁用） |
-| 真实模型 | Qwen3.5 61 层完整运行（36.08 s/token） | from_real 组件就绪（含 full 注意力构造器）——完整生成受标量反量化性能限制（1 层超时——P0） |
+| 真实模型 | Qwen3.5 （层数从 config.json 读取）完整运行（36.08 s/token） | from_real 组件就绪（含 full 注意力构造器）——完整生成受标量反量化性能限制（1 层超时——P0） |
 | 测试 | 分批次回归全过 | cargo test **44 全绿** |
 | 组件数 | 25 模块 | 17 文件（量化/加载内联） |
 
@@ -70,9 +70,9 @@
 |---|---|---|---|
 | Standard/Full/MLA/GatedDeltaNet 注意力 | ✓（真实运行） | ✓（+ delta rule chunk/recurrent） | ✅ |
 | MoE 量化专家（AWQ 按专家反量化） | ✓ | ✓（+ fp16/bf16 权重） | ✅ |
-| 配置归一化（多厂商：DeepSeek/GLM/Kimi/Qwen3.5/Gemini/Mixtral） | ✓ | ✓ | ✅ |
+| 配置归一化（多厂商：DeepSeek/GLM/Kimi/Qwen3.5/Mixtral） | ✓ | ✓ | ✅ |
 | Qwen3.5 配置解析（text_config 嵌套） | ✓ | ✓（本轮修复） | ✅ |
-| 真实权重端到端生成 | ✓（61 层完整） | ⚠️ 截断浅层冒烟（1 层）；完整生成受性能限制 | ⚠️ P0 |
+| 真实权重端到端生成 | ✓（（层数从 config.json 读取）完整） | ⚠️ 截断浅层冒烟（1 层）；完整生成受性能限制 | ⚠️ P0 |
 
 ### 3.4 投机解码
 | 子项 | Python | Rust | 状态 |
@@ -118,7 +118,7 @@
 ### 部分 ⚠️
 | 差距 | 说明 | 优先级 |
 |---|---|---|
-| 真实模型端到端生成 | **已跑通 ✓**（from_real 构造 21.1s/层 + prefill 11.4s + 生成 13s/3 token——1 层截断；cos_sin/o_w/sampling 三个 bug 已修复）——61 层完整生成受标量 matmul 性能限制（lm_head ~3.5-4.7s/token）——待 SIMD 打包内核 | **P0** |
+| 真实模型端到端生成 | **已跑通 ✓**（from_real 构造 21.1s/层 + prefill 11.4s + 生成 13s/3 token——1 层截断；cos_sin/o_w/sampling 三个 bug 已修复）——（层数从 config.json 读取）完整生成受标量 matmul 性能限制（lm_head ~3.5-4.7s/token）——待 SIMD 打包内核 | **P0** |
 | BLAS 内核（大 matmul） | Python torch BLAS 512³ 4.74ms vs Rust 串行 24.01ms/并行 9.67ms——快 2-5x——tch/libtorch 已下载但**需 MSVC 工具链**（mingw 不兼容）——candle BLAS 为替代方向 | **P0** |
 | MTP 多模块链 | 单模块已实现；k 模块预测链组装为后续 | P2 |
 | fp16/bf16 计算内核 | 权重路径已接入；f32 计算为主（完整 fp16/bf16 内核为 P2） | P2 |

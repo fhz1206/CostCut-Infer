@@ -13,9 +13,9 @@ import unittest
 
 import torch
 
-from liteengine.cache import Cache, ExpertCache
-from liteengine.loader import WeightStore
-from liteengine.model import Qwen3_5MoeModel, load_text_config
+from engine.cache import Cache, ExpertCache
+from io_.loader import WeightStore
+from engine.model import Qwen3_5MoeModel, load_text_config
 
 MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
 N_LAYERS = 5

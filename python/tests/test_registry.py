@@ -1,7 +1,7 @@
 """插件注册表测试：内置注册 / 未知名查找 / 外部组件接入演示 / 架构模式匹配。"""
 import unittest
 
-from liteengine.registry import (get_arch_normalizer, get_attention,
+from engine.registry import (get_arch_normalizer, get_attention,
                                  get_moe_format, get_quant_method,
                                  list_arch_normalizers, list_attentions,
                                  list_moe_formats, list_quant_methods,
@@ -12,10 +12,10 @@ from liteengine.registry import (get_arch_normalizer, get_attention,
 class TestRegistryBuiltins(unittest.TestCase):
     def test_builtins_registered(self):
         """内置组件（注意力 / MoE 格式 / 量化 / 架构）经 import 自动注册。"""
-        import liteengine.attention          # noqa: F401  触发注册
-        import liteengine.moe                # noqa: F401
-        import liteengine.model_config       # noqa: F401
-        from liteengine.quant import dequantize   # noqa: F401
+        import engine.attention          # noqa: F401  触发注册
+        import engine.moe                # noqa: F401
+        import model_config       # noqa: F401
+        from quant import dequantize   # noqa: F401
         self.assertEqual(set(list_attentions()),
                          {"standard", "full_gated", "linear_delta", "mla"})
         self.assertEqual(set(list_moe_formats()),
@@ -57,7 +57,7 @@ class TestRegistryExtensibility(unittest.TestCase):
         self.assertIsNone(resolve_arch("AnotherUnknownArch", "x"))
 
     def test_arch_pattern_matching(self):
-        import liteengine.model_config      # noqa: F401  触发注册
+        import model_config      # noqa: F401  触发注册
         self.assertIsNotNone(resolve_arch("MixtralForCausalLM", ""))
         self.assertIsNotNone(resolve_arch("", "qwen3_moe"))
         self.assertIsNotNone(resolve_arch("KimiK25ForConditionalGeneration", "kimi_k25"))

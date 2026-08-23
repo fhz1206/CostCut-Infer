@@ -3,12 +3,12 @@ from __future__ import annotations
 
 from numpy import ndarray
 
-from liteengine.quant.awq import dequantize_awq        # noqa: F401（触发 awq 处理器注册）
-from liteengine.quant.config import QuantConfig
-from liteengine.quant.fp8 import dequantize_fp8        # noqa: F401（触发 fp8/e4m3/e5m2 注册）
-from liteengine.quant.gptq import dequantize_gptq      # noqa: F401（触发 gptq 处理器注册）
-from liteengine.quant.nvfp4 import dequantize_nvfp4    # noqa: F401（触发 nvfp4 处理器注册）
-from liteengine.registry import get_quant_method
+from quant.awq import dequantize_awq        # noqa: F401（触发 awq 处理器注册）
+from quant.config import QuantConfig
+from quant.fp8 import dequantize_fp8        # noqa: F401（触发 fp8/e4m3/e5m2 注册）
+from quant.gptq import dequantize_gptq      # noqa: F401（触发 gptq 处理器注册）
+from quant.nvfp4 import dequantize_nvfp4    # noqa: F401（触发 nvfp4 处理器注册）
+from engine.registry import get_quant_method
 
 __all__ = ["dequantize"]
 

@@ -14,7 +14,7 @@ import threading
 import torch
 import torch.nn as nn
 from typing import Any
-from liteengine.engine import ModelConfig
+from engine import ModelConfig
 
 import os
 os.environ["PYTHONUTF8"] = "1"

@@ -77,3 +77,9 @@ expert_parallel = false    # 专家多线程并行（多核/异构推荐 true—
 max_history = 20           # 参与上下文的最大历史轮数
 auto_save_history = false  # 是否自动保存历史到 history_file
 history_file = ".chat_history.json"   # 历史记录文件路径
+
+# ------------------------------------------------------------
+[features]                        # 可开可关功能（默认保守——本机实测为准）
+speculate = false                 # 投机解码（dspark 草稿——加速生成；本机实测慢——默认关）
+streaming = true                  # 流式输出（逐 token 打印——CLI/TUI）
+layer_offload = false             # 层级 offload（AirLLM 风格——释放专家反量化缓存——真实 61 层防 OOM）

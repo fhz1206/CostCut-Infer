@@ -12,13 +12,13 @@ import torch
 from torch import Tensor
 from torch.nn.functional import linear
 
-from liteengine.cache import Cache, ExpertCache
-from liteengine.layer import DecoderLayer
-from liteengine.moe import torch_weight
-from liteengine.core.norm import rms_norm
-from liteengine.quant import QuantConfig, load_quant_config
-from liteengine.core.rope import compute_inv_freq, rotary_embeddings
-from liteengine.sampling import sample_token
+from engine.cache import Cache, ExpertCache
+from engine.layer import DecoderLayer
+from engine.moe import torch_weight
+from core.norm import rms_norm
+from quant import QuantConfig, load_quant_config
+from core.rope import compute_inv_freq, rotary_embeddings
+from engine.sampling import sample_token
 
 __all__ = ["Qwen3_5MoeModel", "load_text_config", "causal_mask"]
 
@@ -147,7 +147,7 @@ class Qwen3_5MoeModel:
         草稿质量只影响提速幅度；接受判定保证输出分布与自回归一致。
         部分接受时回滚 cache 并重新推进接受前缀（delta rule 状态无法按位置截断）。
         """
-        from liteengine.speculator import speculative_accept
+        from engine.speculator import speculative_accept
         cache = Cache(self.num_layers,
                       max_len=int(input_ids.shape[0]) + max_new_tokens + 16)
         h = self.prefill(input_ids, cache, num_layers)

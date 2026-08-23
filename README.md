@@ -30,7 +30,6 @@ CostCut Infer 提供**两个独立版本**，定位互补、并行维护：
   - GLM-5（GlmMoeDsa：MLA + DSA 稀疏注意力）、GLM4-MoE
   - Kimi K2.5 / K2.6 / K3（MLA + MoE）
   - Qwen3.5-MoE（主模型：delta rule 线性注意力 + AWQ）
-  - Gemini（稀疏 MoE：128 专家 / 8 激活 / 1 共享）
   - Mixtral 8x7B / Qwen3-MoE A3B / GLM4-MoE / DBRX / Phi3-MoE / 通用回退（未知但非专属架构自动适配）
 - **多量化格式**：AWQ int4 / GPTQ / FP8（E4M3/E5M2）/ NVFP4（E2M1 + 块缩放）——注册表分发
 - **Python 版独有**：dspark 投机解码、GGUF 模型推理、插件注册表、KV 缓存预分配、算子融合
@@ -75,18 +74,19 @@ cargo run --release --offline            # M1-M4 冒烟 + 性能对比（并行 
 cargo test --offline                     # 单元测试（29 项）
 ```
 
-## 支持的架构与量化（配置驱动）
+## 支持的架构与量化（配置驱动——模型规格从各模型 config.json 读取）
 
-| 架构 | 注意力 | MoE 规格 | 状态 |
-|---|---|---|---|
-| Qwen3.5-MoE（主模型） | delta rule + gated full | 256 路由 + 共享（AWQ） | ✅ 完整运行 |
-| DeepSeek-V3 / R1 / V4 | MLA（经典） | 256 路由 + 1 共享 + 组路由 | ✅ 配置 + 组件 |
-| GLM-5（GlmMoeDsa） | MLA | 256 路由/top-8 + 1 共享 + DSA 索引器（字段解析） | ✅ 配置 + 组件 |
-| GLM4-MoE | 标准 GQA | 64 路由/top-8 + 共享 | ✅ 配置 + 组件 |
-| Kimi K2.5 / K2.6 / K3 | MLA（经典） | 256 路由 + 1 共享 | ✅ 配置 + 组件 |
-| Gemini | 标准 GQA | 128 路由/8 激活 + 1 共享 | ✅ 配置 + 组件 |
-| Mixtral / Qwen3-MoE / DBRX / Phi3-MoE | 标准 GQA | 无共享 / 共享 各异 | ✅ 配置 + 组件 |
-| 未知非专属架构 | 标准 GQA（通用回退） | MoE / 稠密自动探测 | ✅ 自动适配 |
+| 架构 | 注意力 | 状态 |
+|---|---|---|
+| Qwen3.5-MoE（主模型） | delta rule + gated full | ✅ 完整运行 |
+| DeepSeek-V3 / R1 / V4 | MLA（经典） | ✅ 配置 + 组件 |
+| GLM-5（GlmMoeDsa） | MLA | ✅ 配置 + 组件 |
+| GLM4-MoE | 标准 GQA | ✅ 配置 + 组件 |
+| Kimi K2.5 / K2.6 / K3 | MLA（经典） | ✅ 配置 + 组件 |
+| Mixtral / Qwen3-MoE / DBRX / Phi3-MoE | 标准 GQA | ✅ 配置 + 组件 |
+| 未知非专属架构 | 标准 GQA（通用回退） | ✅ 自动适配（MoE / 稠密自动探测） |
+
+> 各架构的路由数 / 层数 / 激活数等具体规格**由模型目录的 config.json 动态读取**（`model_config.py` 的架构归一化）——不在文档写死，避免与真实模型规格不符。
 
 **量化**：AWQ int4 / GPTQ（bits 2/4/8）/ FP8（E4M3/E5M2）/ NVFP4（E2M1 + 块缩放）——注册表分发。
 

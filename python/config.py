@@ -85,6 +85,14 @@ class ChatConfig:
 
 
 @dataclass
+class FeaturesConfig:
+    """功能开关（engine.toml [features]——可开可关功能）。"""
+    speculate: bool = False         # 投机解码（默认关——本机实测慢）
+    streaming: bool = True          # 流式输出
+    layer_offload: bool = False     # 层级 offload（AirLLM 风格——61 层防 OOM）
+
+
+@dataclass
 class DeviceConfig:
     """设备推荐配置（engine.toml [device]——kind 切换推荐值；优化开关默认关——本机实测）。
     设备类型：cpu / gpu（CUDA）/ npu（昇腾）/ apu（AMD ROCm）。"""
@@ -122,8 +130,9 @@ class DeviceConfig:
 class EngineConfig:
     """liteengine 的 engine.toml 解析器。"""
 
-    def __init__(self, config_path: str = "engine.toml"):
-        self.config_path = Path(config_path)
+    def __init__(self, config_path: str | Path = ""):
+        # 默认定位到本文件同目录的 engine.toml（脚本相对——从任意 cwd 运行都可用）
+        self.config_path = Path(config_path) if config_path else Path(__file__).parent / "engine.toml"
         self.default_model: str = ""
         self.models: dict[str, ModelConfig] = {}
         self.inference = InferenceConfig()
@@ -135,6 +144,12 @@ class EngineConfig:
             raise FileNotFoundError(f"Config file not found: {self.config_path}")
         with open(self.config_path, "r", encoding="utf-8") as f:
             data = loads(_normalize_model_tables(f.read()))
+        feat = data.get("features", {})
+        self.features: FeaturesConfig = FeaturesConfig(
+            speculate=bool(feat.get("speculate", False)),
+            streaming=bool(feat.get("streaming", True)),
+            layer_offload=bool(feat.get("layer_offload", False)),
+        )
 
         self.default_model = str(data.get("default", {}).get("model", ""))
 

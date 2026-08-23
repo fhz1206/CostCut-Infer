@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from numpy import ndarray
 
-from liteengine.quant.config import QuantConfig
-from liteengine.quant.unpack import _OUT_DTYPES, _dequant_formula, _unpack_colwise
-from liteengine.registry import register_quant_method
+from quant.config import QuantConfig
+from quant.unpack import _OUT_DTYPES, _dequant_formula, _unpack_colwise
+from engine.registry import register_quant_method
 
 __all__ = ["dequantize_gptq"]
 

@@ -17,18 +17,18 @@ from numpy import float16, int32
 from numpy.random import default_rng
 from torch.nn.functional import scaled_dot_product_attention, silu
 
-from liteengine.attention import (
+from engine.attention import (
     chunk_gated_delta_rule,
     eager_attention,
     recurrent_gated_delta_rule,
 )
-from liteengine.layer import DecoderLayer
-from liteengine.loader import WeightStore
-from liteengine.model import causal_mask, load_text_config
-from liteengine.moe import MLP, QuantizedExperts, SparseMoeBlock, TopKRouter
-from liteengine.core.norm import rms_norm, rms_norm_gated
-from liteengine.quant import dequantize_awq
-from liteengine.core.rope import apply_rotary_pos_emb, compute_inv_freq, rotary_embeddings
+from engine.layer import DecoderLayer
+from io_.loader import WeightStore
+from engine.model import causal_mask, load_text_config
+from engine.moe import MLP, QuantizedExperts, SparseMoeBlock, TopKRouter
+from core.norm import rms_norm, rms_norm_gated
+from quant import dequantize_awq
+from core.rope import apply_rotary_pos_emb, compute_inv_freq, rotary_embeddings
 
 MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
 

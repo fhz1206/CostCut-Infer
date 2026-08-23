@@ -48,9 +48,9 @@ for _stream in (sys.stdout, sys.stderr):
 os.environ["PYTHONUTF8"] = "1"
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
-from liteengine.config import EngineConfig
-from liteengine.loader import WeightStore
-from liteengine.model import Qwen3_5MoeModel, load_text_config
+from config import EngineConfig
+from io_.loader import WeightStore
+from engine.engine.model import Qwen3_5MoeModel, load_text_config
 
 # liteengine 仅支持此架构
 SUPPORTED_ARCH = "Qwen3_5MoeForConditionalGeneration"
@@ -115,7 +115,7 @@ class ChatSession:
     def _get_speculator(self):
         """dspark 投机草稿模型（配置 dspark_model 非空时启用）。"""
         if self._speculator is None and self.model_cfg.dspark_model:
-            from liteengine.speculator import DSparkSpeculator
+            from engine.engine.speculator import DSparkSpeculator
             self._speculator = DSparkSpeculator(self.model_cfg.dspark_model_dir)
         return self._speculator
 

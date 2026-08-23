@@ -9,8 +9,8 @@ from __future__ import annotations
 import numpy as np
 from numpy import float32, ndarray, uint8
 
-from liteengine.quant.config import QuantConfig
-from liteengine.registry import register_quant_method
+from quant.config import QuantConfig
+from engine.registry import register_quant_method
 
 __all__ = ["e4m3_to_f32", "e5m2_to_f32", "dequantize_fp8"]
 

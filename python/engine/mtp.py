@@ -10,10 +10,10 @@ from __future__ import annotations
 from torch import Tensor
 from torch.nn.functional import linear
 
-from liteengine.layer import DecoderLayer
-from liteengine.loader import WeightStore
-from liteengine.moe import torch_weight
-from liteengine.core.norm import rms_norm
+from engine.layer import DecoderLayer
+from io_.loader import WeightStore
+from engine.moe import torch_weight
+from core.norm import rms_norm
 
 __all__ = ["MtpModule"]
 

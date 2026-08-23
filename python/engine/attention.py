@@ -12,10 +12,10 @@ import torch
 from torch import Tensor
 from torch.nn.functional import conv1d, linear, pad, silu, softplus
 
-from liteengine.cache import kv_append
-from liteengine.moe import torch_weight
-from liteengine.core.norm import rms_norm, rms_norm_gated
-from liteengine.core.rope import apply_rotary_pos_emb
+from engine.cache import kv_append
+from engine.moe import torch_weight
+from core.norm import rms_norm, rms_norm_gated
+from core.rope import apply_rotary_pos_emb
 
 __all__ = ["FullAttention", "GatedDeltaNet", "StandardAttention", "MlaAttention",
            "chunk_gated_delta_rule", "recurrent_gated_delta_rule"]
@@ -503,7 +503,7 @@ class GatedDeltaNet:
 
 # ---- 注册表：内置注意力构建器（layer 按名称查找；外部组件可新增注册）----
 
-from liteengine.registry import register_attention
+from engine.registry import register_attention
 
 
 @register_attention("standard")

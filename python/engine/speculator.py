@@ -17,10 +17,10 @@ import torch
 from torch import Tensor
 from torch.nn.functional import linear, silu, softmax
 
-from liteengine.loader import WeightStore
-from liteengine.moe import torch_weight
-from liteengine.core.norm import rms_norm
-from liteengine.core.rope import apply_rotary_pos_emb, compute_inv_freq, rotary_embeddings
+from io_.loader import WeightStore
+from engine.moe import torch_weight
+from core.norm import rms_norm
+from core.rope import apply_rotary_pos_emb, compute_inv_freq, rotary_embeddings
 
 __all__ = ["DSparkSpeculator"]
 
@@ -167,7 +167,7 @@ def speculative_accept(draft_ids: list[int], draft_probs: Tensor, verify_logits:
 
     返回 (接受的前缀 token 列表, 接受数, 新采样 token（拒绝时）或 None（全接受）)。
     """
-    from liteengine.sampling import sample_token
+    from engine.sampling import sample_token
     accepted: list[int] = []
     greedy = temperature <= 0.0
     r = torch.rand(len(draft_ids))

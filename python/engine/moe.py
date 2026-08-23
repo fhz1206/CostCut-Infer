@@ -9,8 +9,8 @@ import torch
 from torch import Tensor
 from torch.nn.functional import linear, silu, softmax
 
-from liteengine.cache import ExpertCache
-from liteengine.quant import QuantConfig, dequantize
+from engine.cache import ExpertCache
+from quant import QuantConfig, dequantize
 
 __all__ = ["TopKRouter", "QuantizedExperts", "MergedExperts", "MLP",
            "SparseMoeBlock", "torch_weight", "torch_weight_native"]
@@ -103,7 +103,7 @@ class QuantizedExperts:
         返回 (B, out_dim) fp32。
         """
         import numpy as np
-        from liteengine.quant.unpack import _unpack_int4_colwise
+        from quant.unpack import _unpack_int4_colwise
         w = _unpack_int4_colwise(np.ascontiguousarray(qweight))   # (rows, cols) int8
         # 转置存储兼容：真实模型专家权重为 [in, out] 转置——out_dim 等于列数时转置为 (out, in)
         if w.shape[0] != out_dim and w.shape[1] == out_dim:
@@ -262,7 +262,7 @@ class SparseMoeBlock:
 
 # ---- 注册表：内置专家/MLP 构建器（layer 按格式名查找；外部组件可新增注册）----
 
-from liteengine.registry import register_moe_format
+from engine.registry import register_moe_format
 
 
 @register_moe_format("quantized_separate")

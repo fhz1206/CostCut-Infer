@@ -7,11 +7,11 @@ import unittest
 import numpy as np
 import torch
 
-from liteengine.gguf import (GGML_TYPE_F32, GGML_TYPE_Q4_0, GGUFReader,
+from io_.gguf import (GGML_TYPE_F32, GGML_TYPE_Q4_0, GGUFReader,
                              GGUFWeightStore, gguf_metadata_to_config,
                              hf_to_gguf_name)
-from liteengine.model import Qwen3_5MoeModel
-from liteengine.model_config import _norm_fallback
+from engine.model import Qwen3_5MoeModel
+from model_config import _norm_fallback
 
 HIDDEN, N_LAYERS, HEADS, KVH, INTER, VOCAB = 32, 1, 4, 2, 64, 64
 
@@ -150,7 +150,7 @@ class TestGGUF(unittest.TestCase):
             ("model.layers.2.mlp.experts.down_proj.5.weight", "blk.2.ffn_exps.5.w2.weight"),
             ("model.layers.3.mlp.experts.gate_up_proj.7.weight", "blk.3.ffn_exps.7.w1.weight"),
         ]
-        from liteengine.gguf import gguf_name_to_hf
+        from io_.gguf import gguf_name_to_hf
         for hf, g in pairs:
             self.assertEqual(hf_to_gguf_name(hf), g, f"{hf} 映射错误")
             self.assertEqual(gguf_name_to_hf(g), hf, f"{g} 逆映射错误")

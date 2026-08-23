@@ -7,7 +7,7 @@
 
 用法：:
 
-    from liteengine.registry import register_attention, get_attention
+    from engine.registry import register_attention, get_attention
 
     @register_attention("my_attn")
     def build_my_attn(store, prefix, cfg):

@@ -3,9 +3,9 @@ import unittest
 
 import numpy as np
 
-from liteengine.quant import (QuantConfig, dequantize, e2m1_to_f32, e4m3_to_f32,
+from quant import (QuantConfig, dequantize, e2m1_to_f32, e4m3_to_f32,
                               e5m2_to_f32)
-from liteengine.registry import get_quant_method
+from engine.registry import get_quant_method
 
 
 class TestFpBitLayouts(unittest.TestCase):

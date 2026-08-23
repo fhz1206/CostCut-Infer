@@ -7,11 +7,11 @@ import unittest
 import numpy as np
 import torch
 
-from liteengine.attention import StandardAttention
-from liteengine.layer import DecoderLayer
-from liteengine.model import causal_mask
-from liteengine.model_config import load_model_config
-from liteengine.moe import MergedExperts, SparseMoeBlock, TopKRouter
+from engine.attention import StandardAttention
+from engine.layer import DecoderLayer
+from engine.model import causal_mask
+from model_config import load_model_config
+from engine.moe import MergedExperts, SparseMoeBlock, TopKRouter
 
 
 class _FakeStore:
@@ -163,19 +163,6 @@ class TestModelConfig(unittest.TestCase):
         self.assertEqual(c["arch"], "glm5")
         self.assertEqual(c["attention"], "mla")
         self.assertEqual(c["moe"]["num_experts"], 256)
-        self.assertTrue(c["moe"]["shared"])
-
-    def test_gemini_normalize(self):
-        """Gemini（稀疏 MoE：128 专家/8 激活/1 共享——标准注意力 MoE）。"""
-        cfg = {"model_type": "gemini", "architectures": ["GeminiForCausalLM"],
-               "hidden_size": 3584, "num_hidden_layers": 30, "num_attention_heads": 32,
-               "num_key_value_heads": 4, "vocab_size": 262144, "rms_norm_eps": 1e-5,
-               "num_experts": 128, "num_experts_per_tok": 8,
-               "n_shared_experts": 1, "moe_intermediate_size": 1536}
-        c = load_model_config(self._write(cfg, "cfg_gemini"))
-        self.assertEqual(c["arch"], "gemini")
-        self.assertEqual(c["layer_attention_types"][0], "standard")
-        self.assertEqual(c["moe"]["num_experts"], 128)
         self.assertTrue(c["moe"]["shared"])
 
     def test_kimi_k3_and_r1(self):

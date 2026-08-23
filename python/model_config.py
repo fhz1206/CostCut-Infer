@@ -219,7 +219,7 @@ def _norm_fallback(c: dict, archs: str, mtype: str) -> dict:
 
 # ---- 注册表：内置架构归一化器（load_model_config 经 registry 探测；外部可新增注册）----
 
-from liteengine.registry import register_arch_normalizer, resolve_arch
+from engine.registry import register_arch_normalizer, resolve_arch
 
 
 @register_arch_normalizer("qwen3_5_moe", patterns=("Qwen3_5", "qwen3_5"))
@@ -248,17 +248,6 @@ def _reg_glm5(c: dict) -> dict:
     d["arch"] = "glm5"
     return d
 
-
-@register_arch_normalizer("gemini", patterns=("Gemini", "gemini"))
-def _reg_gemini(c: dict) -> dict:
-    """Gemini（稀疏 MoE，Gemma 4 风格：128 专家/8 激活/1 共享——标准注意力 + MoE）。
-
-    走通用回退的 MoE 探测（标准 GQA 注意力 + 路由/共享专家——组件已存在）。
-    """
-    archs = " ".join(c.get("architectures") or [])
-    d = _norm_fallback(c, archs, str(c.get("model_type", "")).lower())
-    d["arch"] = "gemini"
-    return d
 
 
 @register_arch_normalizer("glm_moe", patterns=("Glm4Moe", "glm4_moe", "GlmMoe"))
