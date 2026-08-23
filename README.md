@@ -93,21 +93,6 @@ cargo test --offline                     # 单元测试（29 项）
 ## 性能参考
 
 - 实测数据与两版对比详见 `docs/total/性能分析报告.md`
-- 未来性能开发方向与已实施项详见 `docs/total/未来性能开发方向报告.md`
-- 推理代码与 vLLM 差异分析详见 `docs/total/推理代码与vLLM差异报告.md`
-
-## 测试
-
-```bash
-# Python 版（从项目根目录，PYTHONPATH 指向 python/）
-PYTHONPATH=python python -m unittest discover -s python/tests
-
-# Rust 版
-cd rust && cargo test --offline
-```
-
-## 限制与路线
-
-- **Python 版**：主模型为 Qwen3.5-MoE（完整运行）；其它架构为配置 + 组件级（需真实权重端到端验证）；V4-Flash / DSA 索引器实现记后续
-- **Rust 版**：当前为纯 std 功能验证（合成模型）；真实模型接入（delta rule + 量化分离专家）与 BLAS/SIMD 内核为性能路线核心
-- 双版本均只适配 MoE 架构（Dense 暂不纳入）
+> **vLLM 核心能力（已接入推理管线）**：PagedAttention（分页 KV 缓存）+ continuous batching（请求批处理）+ prefix caching（前缀复用）+ 量化内核（int4 融合 matmul——z 转置适配修复）；
+> OpenAI 兼容 API 支持流式响应（`stream=true`——SSE）；参数用户可调：engine.toml `[paging]`（num_blocks/block_size）+ `[batching]`（enable）。
+> 构建与发布：`./build.sh` 一条命令（Rust 构建 → v0.1.0_beta → Inno 打包 → setup/ 安装包——见 `docs/total/构建与发布指南.md`）。
