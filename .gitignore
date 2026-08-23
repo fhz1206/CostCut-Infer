@@ -77,3 +77,5 @@ python/asmjit.dll
 python/fbgemm.dll
 python/libiomp5md.dll
 python/libiompstubs5md.dll
+produce/setup
+produce/v0.1.0_beta
