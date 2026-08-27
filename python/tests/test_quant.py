@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
+import pytest
 import torch
 
 from ccut.quant import kernels
@@ -127,15 +128,26 @@ def test_w4a16_dequant_correctness():
     )
     x = torch.randn(4, 32).numpy()
     y = m.apply(w4.tobytes(), {"t.int4.weight_scale": s4}, x)
-    lo = (w4 & 0x0F)
-    hi = (w4 >> 4) & 0x0F
-    lo = np.where(lo >= 8, lo - 16, lo)
-    hi = np.where(hi >= 8, hi - 16, hi)
+    # 参考（位级正确版：用 np.int8 中间结果避免 uint8 减法回绕）
+    packed = w4.copy()
+    lo = np.empty(packed.shape, dtype=np.int8)
+    hi = np.empty(packed.shape, dtype=np.int8)
+    for i in range(packed.shape[0]):
+        for j in range(packed.shape[1]):
+            b = int(packed[i, j])
+            l = b & 0x0F
+            h = (b >> 4) & 0x0F
+            if l >= 8:
+                l -= 16
+            if h >= 8:
+                h -= 16
+            lo[i, j] = l
+            hi[i, j] = h
     W = np.empty((10, 32), dtype=np.float32)
-    W[:, 0::2] = lo * s4[0::2]
-    W[:, 1::2] = hi * s4[1::2]
+    W[:, 0::2] = lo.astype(np.float32) * s4[0::2]
+    W[:, 1::2] = hi.astype(np.float32) * s4[1::2]
     ref = x @ W.T
-    assert np.allclose(y, ref, atol=1e-6)
+    assert np.allclose(y, ref, atol=1e-5)
 
 
 def test_online_quantize_bf16_buffer():

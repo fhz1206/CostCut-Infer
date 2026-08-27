@@ -226,19 +226,28 @@ class SafetensorsFile:
 def load_index(model_dir: str | Path) -> dict:
     """解析 ``model.safetensors.index.json`` → ``{tensor_name: shard_filename}``。
 
-    返回 ``{"weight_map": {...}, "metadata": {...}}``；无 index 时返回单分片约定。
+    返回 ``{"weight_map": {...}, "metadata": {...}}``；无 index 时按存在的 shard 兜底
+    （单分片 ``model.safetensors`` 优先；否则扫 ``*.safetensors`` 第一张）。
     """
     model_dir = Path(model_dir)
     index_path = model_dir / "model.safetensors.index.json"
     if index_path.exists():
         with open(index_path, "rb") as fh:
             data = json.load(fh)
-        return {"weight_map": data.get("weight_map", {}), "metadata": {k: v for k, v in data.items() if k != "weight_map"}}
-    # 无 index：假定单文件 model.safetensors
+        return {
+            "weight_map": data.get("weight_map", {}),
+            "metadata": {k: v for k, v in data.items() if k != "weight_map"},
+        }
+    # 无 index：单文件约定优先（HF 习惯），否则扫 *.safetensors
     single = model_dir / "model.safetensors"
     if single.exists():
         return {"weight_map": {}, "metadata": {"single_file": single.name}}
-    raise FileNotFoundError(f"{model_dir}: 无 model.safetensors.index.json 或 model.safetensors")
+    shards = sorted(model_dir.glob("*.safetensors"))
+    if shards:
+        return {"weight_map": {}, "metadata": {"single_file": shards[0].name}}
+    raise FileNotFoundError(
+        f"{model_dir}: 无 model.safetensors.index.json / model.safetensors / 任何 .safetensors"
+    )
 
 
 def iter_shards(model_dir: str | Path) -> list[Path]:
@@ -248,8 +257,10 @@ def iter_shards(model_dir: str | Path) -> list[Path]:
     seen: list[Path] = []
     for shard in info["weight_map"].values():
         p = model_dir / shard
-        if p not in seen:
+        if p.exists() and p not in seen:
             seen.append(p)
     if not seen and info["metadata"].get("single_file"):
-        seen.append(model_dir / info["metadata"]["single_file"])
+        p = model_dir / info["metadata"]["single_file"]
+        if p.exists() and p not in seen:
+            seen.append(p)
     return seen

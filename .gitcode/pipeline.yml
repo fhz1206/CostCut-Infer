@@ -1,0 +1,70 @@
+# GitCode Pipeline（CostCut-Infer）
+# 平台读取 .gitcode/pipeline.yml 自动执行；本地手工模拟命令附在每阶段。
+# 策略：
+#   1) 仅 Windows runner（本机已测环境同 CI；Linux 跑 FP8/numba 路径需重新校准）
+#   2) 单阶段 pytest -m "not slow"（CI 跳过真 Ornith 大 IO，慢测试标 @pytest.mark.slow）
+#   3) 无 GPU/CUDA；torch 走 +cpu 通道
+#   4) Python 3.14.5 锁定（已验证 numba 0.67 / torch 2.13 cpu 兼容）
+#   5) 三段门禁：lint → test → build（wheel sdist）
+#   6) 失败阶段可重跑单阶段（--restart-from）
+
+stages:
+  - lint
+  - test
+  - build
+
+# 默认 runner 模板（Windows 11 + Python 3.14.5）
+runner:
+  type: windows
+  image: windows-2022
+  python: "3.14.5"
+  shell: powershell
+  env:
+    CCUT_PYTHON: "C:\\Users\\ASUS\\AppData\\Local\\Programs\\Python\\Python314\\python.exe"
+    PYTHONIOENCODING: "utf-8"
+    PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  cache:
+    - key: pip-${COMMIT_HASH}
+      paths:
+        - ~/.cache/pip
+
+stages_detail:
+  lint:
+    description: "Python 语法 + 导入 lint（py_compile + ast.parse）"
+    script: |
+      & $env:CCUT_PYTHON -m compileall -q python\ccut python\CostCut-Infer.py
+      Write-Host "lint OK"
+    artifact: []
+
+  test:
+    description: "pytest（合成小模型；slow 标记真 Ornith 测试被 skip）"
+    script: |
+      & $env:CCUT_PYTHON -m pip install --quiet pytest pytest-cov numpy psutil safetensors numba torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+      & $env:CCUT_PYTHON -m pytest python\tests -q -m "not slow" --tb=short --cov=python\ccut --cov-report=term --cov-fail-under=0
+    artifact:
+      - coverage.xml
+      - junit.xml
+    timeout: 1800
+
+  build:
+    description: "wheel + sdist（生成 artifact）"
+    script: |
+      & $env:CCUT_PYTHON -m pip install --quiet build
+      & $env:CCUT_PYTHON -m build python --wheel --sdist --outdir dist
+    artifact:
+      - dist/*.whl
+      - dist/*.tar.gz
+
+# 触发器
+triggers:
+  push:
+    branches: [main, develop, feature/*]
+  pull_request:
+    branches: [main, develop]
+
+# 通知
+notify:
+  on_failure:
+    - email: maintainers@costcut-infer.local
+  on_success:
+    - email: maintainers@costcut-infer.local
