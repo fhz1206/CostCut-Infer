@@ -1,0 +1,3908 @@
+{
+ "version": 1,
+ "vllm_registry": "vllm\\vllm\\model_executor\\models\\registry.py",
+ "vllm_version": "unknown",
+ "generated_at": "2026-08-27T06:01:12+00:00",
+ "total": 425,
+ "vllm_registry_count": 371,
+ "tier_counts": {
+  "L0": 76,
+  "L1": 295,
+  "L2": 54
+ },
+ "task_counts": {
+  "embedding": 28,
+  "late_interaction": 10,
+  "multimodal": 112,
+  "out_of_tree": 4,
+  "removed": 50,
+  "reward": 3,
+  "sequence_classification": 10,
+  "speculative_decoding": 58,
+  "text_generation": 121,
+  "token_classification": 6,
+  "transformers_backend": 10,
+  "transformers_supported": 13
+ },
+ "family_counts": {
+  "-": 242,
+  "llama": 24,
+  "qwen3": 19,
+  "deepseek-mla": 17,
+  "gemma": 16,
+  "nemotron": 13,
+  "qwen2": 10,
+  "gdn-hybrid": 9,
+  "granite": 9,
+  "glm-dsa": 8,
+  "mistral": 7,
+  "bailing": 6,
+  "phi": 6,
+  "kimi": 5,
+  "ernie": 4,
+  "gpt2": 4,
+  "minimax": 4,
+  "longcat": 3,
+  "chatglm": 2,
+  "falcon": 2,
+  "hy": 2,
+  "internlm": 2,
+  "jamba": 2,
+  "afmoe": 1,
+  "apertus": 1,
+  "arcee": 1,
+  "bloom": 1,
+  "jais": 1,
+  "olmoe": 1,
+  "plamo": 1,
+  "seed_oss": 1,
+  "stablelm": 1
+ },
+ "architectures": {
+  "AfmoeForCausalLM": {
+   "tier": "L0",
+   "family": "afmoe",
+   "module": "afmoe",
+   "vllm_class": "AfmoeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 afmoe（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "ApertusForCausalLM": {
+   "tier": "L0",
+   "family": "apertus",
+   "module": "apertus",
+   "vllm_class": "ApertusForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 apertus（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "ArceeForCausalLM": {
+   "tier": "L0",
+   "family": "arcee",
+   "module": "arcee",
+   "vllm_class": "ArceeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 arcee（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "AXK1ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "AXK1",
+   "vllm_class": "AXK1ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "BailingMoeForCausalLM": {
+   "tier": "L0",
+   "family": "bailing",
+   "module": "bailing_moe",
+   "vllm_class": "BailingMoeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 bailing（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "BailingMoeV2ForCausalLM": {
+   "tier": "L0",
+   "family": "bailing",
+   "module": "bailing_moe",
+   "vllm_class": "BailingMoeV2ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 bailing（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "BailingMoeV2_5ForCausalLM": {
+   "tier": "L0",
+   "family": "bailing",
+   "module": "bailing_moe_linear",
+   "vllm_class": "BailingMoeV25ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 bailing（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "BailingMoeV3ForCausalLM": {
+   "tier": "L0",
+   "family": "bailing",
+   "module": "bailing_moe_v3",
+   "vllm_class": "BailingMoeV3ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 bailing（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "BloomForCausalLM": {
+   "tier": "L0",
+   "family": "bloom",
+   "module": "bloom",
+   "vllm_class": "BloomForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 bloom（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "ChatGLMModel": {
+   "tier": "L0",
+   "family": "chatglm",
+   "module": "chatglm",
+   "vllm_class": "ChatGLMForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 chatglm（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "ChatGLMForConditionalGeneration": {
+   "tier": "L0",
+   "family": "chatglm",
+   "module": "chatglm",
+   "vllm_class": "ChatGLMForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 chatglm（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "CohereForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "commandr",
+   "vllm_class": "CohereForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Cohere2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "commandr",
+   "vllm_class": "CohereForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Cohere2MoeForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "cohere2_moe",
+   "vllm_class": "Cohere2MoeForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "CwmForCausalLM": {
+   "tier": "L0",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 llama（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "DbrxForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "dbrx",
+   "vllm_class": "DbrxForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "DeciLMForCausalLM": {
+   "tier": "L0",
+   "family": "nemotron",
+   "module": "nemotron_nas",
+   "vllm_class": "DeciLMForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 nemotron（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "DeepseekForCausalLM": {
+   "tier": "L0",
+   "family": "deepseek-mla",
+   "module": "deepseek_v2",
+   "vllm_class": "DeepseekForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 deepseek-mla（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "DeepseekV2ForCausalLM": {
+   "tier": "L0",
+   "family": "deepseek-mla",
+   "module": "deepseek_v2",
+   "vllm_class": "DeepseekV2ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 deepseek-mla（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "DeepseekV3ForCausalLM": {
+   "tier": "L0",
+   "family": "deepseek-mla",
+   "module": "deepseek_v2",
+   "vllm_class": "DeepseekV3ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 deepseek-mla（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "DeepseekV32ForCausalLM": {
+   "tier": "L0",
+   "family": "deepseek-mla",
+   "module": "vllm.models.deepseek_v32",
+   "vllm_class": "DeepseekV32ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 deepseek-mla（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "DeepseekV4ForCausalLM": {
+   "tier": "L0",
+   "family": "deepseek-mla",
+   "module": "vllm.models.deepseek_v4",
+   "vllm_class": "DeepseekV4ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 deepseek-mla（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Ernie4_5ForCausalLM": {
+   "tier": "L0",
+   "family": "ernie",
+   "module": "ernie45",
+   "vllm_class": "Ernie4_5ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 ernie（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Ernie4_5_MoeForCausalLM": {
+   "tier": "L0",
+   "family": "ernie",
+   "module": "ernie45_moe",
+   "vllm_class": "Ernie4_5_MoeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 ernie（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "ExaoneForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "exaone",
+   "vllm_class": "ExaoneForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Exaone4ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "exaone4",
+   "vllm_class": "Exaone4ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "ExaoneMoeForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "exaone_moe",
+   "vllm_class": "ExaoneMoeForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "FalconForCausalLM": {
+   "tier": "L0",
+   "family": "falcon",
+   "module": "falcon",
+   "vllm_class": "FalconForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 falcon（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "FalconMambaForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "mamba",
+   "vllm_class": "MambaForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "FalconH1ForCausalLM": {
+   "tier": "L0",
+   "family": "falcon",
+   "module": "falcon_h1",
+   "vllm_class": "FalconH1ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 falcon（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GemmaForCausalLM": {
+   "tier": "L0",
+   "family": "gemma",
+   "module": "gemma",
+   "vllm_class": "GemmaForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gemma（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Gemma2ForCausalLM": {
+   "tier": "L0",
+   "family": "gemma",
+   "module": "gemma2",
+   "vllm_class": "Gemma2ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gemma（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Gemma3ForCausalLM": {
+   "tier": "L0",
+   "family": "gemma",
+   "module": "gemma3",
+   "vllm_class": "Gemma3ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gemma（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Rnj1ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "rnj1",
+   "vllm_class": "Rnj1ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Gemma3nForCausalLM": {
+   "tier": "L0",
+   "family": "gemma",
+   "module": "gemma3n",
+   "vllm_class": "Gemma3nForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gemma（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Gemma4ForCausalLM": {
+   "tier": "L0",
+   "family": "gemma",
+   "module": "gemma4",
+   "vllm_class": "Gemma4ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gemma（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Qwen3NextForCausalLM": {
+   "tier": "L0",
+   "family": "gdn-hybrid",
+   "module": "qwen3_next",
+   "vllm_class": "Qwen3NextForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gdn-hybrid（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GlmForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "glm",
+   "vllm_class": "GlmForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Glm4ForCausalLM": {
+   "tier": "L0",
+   "family": "glm-dsa",
+   "module": "glm4",
+   "vllm_class": "Glm4ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 glm-dsa（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Glm4MoeForCausalLM": {
+   "tier": "L0",
+   "family": "glm-dsa",
+   "module": "glm4_moe",
+   "vllm_class": "Glm4MoeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 glm-dsa（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Glm4MoeLiteForCausalLM": {
+   "tier": "L0",
+   "family": "glm-dsa",
+   "module": "glm4_moe_lite",
+   "vllm_class": "Glm4MoeLiteForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 glm-dsa（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GlmMoeDsaForCausalLM": {
+   "tier": "L0",
+   "family": "deepseek-mla",
+   "module": "vllm.models.deepseek_v32",
+   "vllm_class": "GlmMoeDsaForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 deepseek-mla（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GptOssForCausalLM": {
+   "tier": "L0",
+   "family": "gpt2",
+   "module": "gpt_oss",
+   "vllm_class": "GptOssForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gpt2（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GPT2LMHeadModel": {
+   "tier": "L0",
+   "family": "gpt2",
+   "module": "gpt2",
+   "vllm_class": "GPT2LMHeadModel",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gpt2（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GPTJForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "gpt_j",
+   "vllm_class": "GPTJForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "GPTNeoXForCausalLM": {
+   "tier": "L0",
+   "family": "gpt2",
+   "module": "gpt_neox",
+   "vllm_class": "GPTNeoXForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gpt2（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GraniteForCausalLM": {
+   "tier": "L0",
+   "family": "granite",
+   "module": "granite",
+   "vllm_class": "GraniteForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 granite（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GraniteMoeForCausalLM": {
+   "tier": "L0",
+   "family": "granite",
+   "module": "granitemoe",
+   "vllm_class": "GraniteMoeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 granite（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GraniteMoeHybridForCausalLM": {
+   "tier": "L0",
+   "family": "granite",
+   "module": "granitemoehybrid",
+   "vllm_class": "GraniteMoeHybridForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 granite（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GraniteMoeSharedForCausalLM": {
+   "tier": "L0",
+   "family": "granite",
+   "module": "granitemoeshared",
+   "vllm_class": "GraniteMoeSharedForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 granite（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GraniteMoeSWAForCausalLM": {
+   "tier": "L0",
+   "family": "granite",
+   "module": "granitemoeshared",
+   "vllm_class": "GraniteMoeSharedForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 granite（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "GraniteSWAForCausalLM": {
+   "tier": "L0",
+   "family": "granite",
+   "module": "granite",
+   "vllm_class": "GraniteForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 granite（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "HrmTextForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "hrm_text",
+   "vllm_class": "HrmTextForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "HYV3ForCausalLM": {
+   "tier": "L0",
+   "family": "hy",
+   "module": "hy_v3",
+   "vllm_class": "HYV3ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 hy（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "HCXVisionV2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "hyperclovax_vision_v2",
+   "vllm_class": "HCXVisionV2ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "HyperCLOVAXForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "hyperclovax",
+   "vllm_class": "HyperCLOVAXForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "InternLM2ForCausalLM": {
+   "tier": "L0",
+   "family": "internlm",
+   "module": "internlm2",
+   "vllm_class": "InternLM2ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 internlm（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "InternLM3ForCausalLM": {
+   "tier": "L0",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 llama（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "IQuestCoderForCausalLM": {
+   "tier": "L0",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 llama（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "IQuestLoopCoderForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "iquest_loopcoder",
+   "vllm_class": "IQuestLoopCoderForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Jais2ForCausalLM": {
+   "tier": "L0",
+   "family": "jais",
+   "module": "jais2",
+   "vllm_class": "Jais2ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 jais（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "JambaForCausalLM": {
+   "tier": "L0",
+   "family": "jamba",
+   "module": "jamba",
+   "vllm_class": "JambaForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 jamba（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "KimiLinearForCausalLM": {
+   "tier": "L0",
+   "family": "kimi",
+   "module": "vllm.models.kimi_k3",
+   "vllm_class": "KimiLinearForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 kimi（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Lfm2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "lfm2",
+   "vllm_class": "Lfm2ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Lfm2MoeForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "lfm2_moe",
+   "vllm_class": "Lfm2MoeForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "LagunaForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "laguna",
+   "vllm_class": "LagunaForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "LlamaForCausalLM": {
+   "tier": "L0",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 llama（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Llama4ForCausalLM": {
+   "tier": "L0",
+   "family": "llama",
+   "module": "llama4",
+   "vllm_class": "Llama4ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 llama（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "LLaMAForCausalLM": {
+   "tier": "L0",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 llama（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "LongcatFlashForCausalLM": {
+   "tier": "L0",
+   "family": "longcat",
+   "module": "longcat_flash",
+   "vllm_class": "LongcatFlashForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 longcat（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "LongcatFlashNgramForCausalLM": {
+   "tier": "L0",
+   "family": "longcat",
+   "module": "longcat_flash_ngram",
+   "vllm_class": "LongcatFlashNgramForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 longcat（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "MambaForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "mamba",
+   "vllm_class": "MambaForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Mamba2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "mamba2",
+   "vllm_class": "Mamba2ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "MellumForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "mellum",
+   "vllm_class": "MellumForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "MiniCPMForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "minicpm",
+   "vllm_class": "MiniCPMForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "MiniCPM3ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "minicpm3",
+   "vllm_class": "MiniCPM3ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "MiniMaxM2ForCausalLM": {
+   "tier": "L0",
+   "family": "minimax",
+   "module": "minimax_m2",
+   "vllm_class": "MiniMaxM2ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 minimax（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "MiniMaxM3SparseForCausalLM": {
+   "tier": "L0",
+   "family": "minimax",
+   "module": "vllm.models.minimax_m3",
+   "vllm_class": "MiniMaxM3SparseForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 minimax（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "InklingForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "vllm.models.inkling",
+   "vllm_class": "InklingForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "InklingForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "vllm.models.inkling",
+   "vllm_class": "InklingForConditionalGeneration",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Ministral3ForCausalLM": {
+   "tier": "L0",
+   "family": "mistral",
+   "module": "mistral",
+   "vllm_class": "MistralForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 mistral（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "MistralForCausalLM": {
+   "tier": "L0",
+   "family": "mistral",
+   "module": "mistral",
+   "vllm_class": "MistralForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 mistral（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "MistralLarge3ForCausalLM": {
+   "tier": "L0",
+   "family": "mistral",
+   "module": "mistral_large_3",
+   "vllm_class": "MistralLarge3ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 mistral（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "MixtralForCausalLM": {
+   "tier": "L0",
+   "family": "mistral",
+   "module": "mixtral",
+   "vllm_class": "MixtralForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 mistral（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "MiMoForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "mimo",
+   "vllm_class": "MiMoForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "MiMoV2FlashForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "mimo_v2",
+   "vllm_class": "MiMoV2FlashForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "MiMoV2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "mimo_v2",
+   "vllm_class": "MiMoV2ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "NemotronForCausalLM": {
+   "tier": "L0",
+   "family": "nemotron",
+   "module": "nemotron",
+   "vllm_class": "NemotronForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 nemotron（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "NemotronHForCausalLM": {
+   "tier": "L0",
+   "family": "nemotron",
+   "module": "nemotron_h",
+   "vllm_class": "NemotronHForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 nemotron（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "NemotronHPuzzleForCausalLM": {
+   "tier": "L0",
+   "family": "nemotron",
+   "module": "nemotron_h",
+   "vllm_class": "NemotronHForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 nemotron（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "MuseGlimmerForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "muse_glimmer",
+   "vllm_class": "MuseGlimmerForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "OlmoHybridForCausalLM": {
+   "tier": "L0",
+   "family": "llama",
+   "module": "olmo_hybrid",
+   "vllm_class": "OlmoHybridForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 llama（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "OlmoeForCausalLM": {
+   "tier": "L0",
+   "family": "olmoe",
+   "module": "olmoe",
+   "vllm_class": "OlmoeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 olmoe（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "OPTForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "opt",
+   "vllm_class": "OPTForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "OrionForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "orion",
+   "vllm_class": "OrionForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "PanguEmbeddedForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "openpangu",
+   "vllm_class": "PanguEmbeddedForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "PanguProMoEV2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "openpangu",
+   "vllm_class": "PanguProMoEV2ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "PanguUltraMoEForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "openpangu",
+   "vllm_class": "PanguUltraMoEForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Param2MoEForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "param2moe",
+   "vllm_class": "Param2MoEForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "PhiForCausalLM": {
+   "tier": "L0",
+   "family": "phi",
+   "module": "phi",
+   "vllm_class": "PhiForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 phi（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Phi3ForCausalLM": {
+   "tier": "L0",
+   "family": "phi",
+   "module": "phi3",
+   "vllm_class": "Phi3ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 phi（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "PhiMoEForCausalLM": {
+   "tier": "L0",
+   "family": "phi",
+   "module": "phimoe",
+   "vllm_class": "PhiMoEForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 phi（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Plamo3ForCausalLM": {
+   "tier": "L0",
+   "family": "plamo",
+   "module": "plamo3",
+   "vllm_class": "Plamo3ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 plamo（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Qwen2ForCausalLM": {
+   "tier": "L0",
+   "family": "qwen2",
+   "module": "qwen2",
+   "vllm_class": "Qwen2ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 qwen2（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Qwen2MoeForCausalLM": {
+   "tier": "L0",
+   "family": "qwen2",
+   "module": "qwen2_moe",
+   "vllm_class": "Qwen2MoeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 qwen2（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Qwen3ForCausalLM": {
+   "tier": "L0",
+   "family": "qwen3",
+   "module": "qwen3",
+   "vllm_class": "Qwen3ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 qwen3（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Qwen3MoeForCausalLM": {
+   "tier": "L0",
+   "family": "qwen3",
+   "module": "qwen3_moe",
+   "vllm_class": "Qwen3MoeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 qwen3（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Qwen3_5ForCausalLM": {
+   "tier": "L0",
+   "family": "gdn-hybrid",
+   "module": "qwen3_5",
+   "vllm_class": "Qwen3_5ForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gdn-hybrid（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Qwen3_5MoeForCausalLM": {
+   "tier": "L0",
+   "family": "gdn-hybrid",
+   "module": "qwen3_5",
+   "vllm_class": "Qwen3_5MoeForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 gdn-hybrid（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "SarvamMoEForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "sarvam",
+   "vllm_class": "SarvamMoEForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "SarvamMLAForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "sarvam",
+   "vllm_class": "SarvamMLAForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "SeedOssForCausalLM": {
+   "tier": "L0",
+   "family": "seed_oss",
+   "module": "seed_oss",
+   "vllm_class": "SeedOssForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 seed_oss（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "Step1ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "step1",
+   "vllm_class": "Step1ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Step3TextForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "step3_text",
+   "vllm_class": "Step3TextForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Step3p5ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "step3p5",
+   "vllm_class": "Step3p5ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "StableLmForCausalLM": {
+   "tier": "L0",
+   "family": "stablelm",
+   "module": "stablelm",
+   "vllm_class": "StablelmForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 stablelm（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "SolarForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "solar",
+   "vllm_class": "SolarForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "TeleChat2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "telechat2",
+   "vllm_class": "TeleChat2ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "TeleChat3ForCausalLM": {
+   "tier": "L0",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaForCausalLM",
+   "task": "text_generation",
+   "reason": "标准 decoder 家族 llama（族模板声明式表达，通用组装器构建）",
+   "aliases": []
+  },
+  "TeleFLMForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "teleflm",
+   "vllm_class": "TeleFLMForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "Zamba2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "zamba2",
+   "vllm_class": "Zamba2ForCausalLM",
+   "task": "text_generation",
+   "reason": "无可表达族模板 → L1 transformers 兜底（P1.5 可评估升级 L0）",
+   "aliases": []
+  },
+  "BertModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "bert",
+   "vllm_class": "BertEmbeddingModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "BertForMaskedLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "bert",
+   "vllm_class": "BertForMaskedLM",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "BertSpladeSparseEmbeddingModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "bert",
+   "vllm_class": "BertSpladeSparseEmbeddingModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "BgeM3EmbeddingModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "roberta",
+   "vllm_class": "BgeM3EmbeddingModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DeepseekV3BidirectionalModel": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "deepseek_v2",
+   "vllm_class": "DeepseekV3ForCausalLM",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Gemma2Model": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "gemma2",
+   "vllm_class": "Gemma2ForCausalLM",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Gemma3TextModel": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "gemma3",
+   "vllm_class": "Gemma3Model",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GteModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "bert_with_rope",
+   "vllm_class": "SnowflakeGteNewModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GteNewModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "bert_with_rope",
+   "vllm_class": "GteNewModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "JinaEmbeddingsV5Model": {
+   "tier": "L1",
+   "family": null,
+   "module": "jina",
+   "vllm_class": "JinaEmbeddingsV5Model",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlamaBidirectionalModel": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaBidirectionalModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlamaModel": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaForCausalLM",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MistralModel": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaForCausalLM",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ModernBertModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "modernbert",
+   "vllm_class": "ModernBertModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "NomicBertModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "bert_with_rope",
+   "vllm_class": "NomicBertModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen2Model": {
+   "tier": "L1",
+   "family": "qwen2",
+   "module": "qwen2",
+   "vllm_class": "Qwen2ForCausalLM",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "RobertaForMaskedLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "roberta",
+   "vllm_class": "RobertaEmbeddingModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "RobertaModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "roberta",
+   "vllm_class": "RobertaEmbeddingModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "VoyageQwen3BidirectionalEmbedModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "voyage",
+   "vllm_class": "VoyageQwen3BidirectionalEmbedModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "XLMRobertaModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "roberta",
+   "vllm_class": "RobertaEmbeddingModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "CLIPModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "clip",
+   "vllm_class": "CLIPEmbeddingModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ColPaliForRetrieval": {
+   "tier": "L1",
+   "family": null,
+   "module": "colpali",
+   "vllm_class": "ColPaliModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlamaNemotronVLModel": {
+   "tier": "L1",
+   "family": "nemotron",
+   "module": "nemotron_vl",
+   "vllm_class": "LlamaNemotronVLForEmbedding",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlavaNextForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "llava_next",
+   "vllm_class": "LlavaNextForConditionalGeneration",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Phi3VForCausalLM": {
+   "tier": "L1",
+   "family": "phi",
+   "module": "phi3v",
+   "vllm_class": "Phi3VForCausalLM",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen2VLForConditionalGeneration": {
+   "tier": "L1",
+   "family": "qwen2",
+   "module": "qwen2_vl",
+   "vllm_class": "Qwen2VLForConditionalGeneration",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "SiglipModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "siglip",
+   "vllm_class": "SiglipEmbeddingModel",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Terratorch": {
+   "tier": "L1",
+   "family": null,
+   "module": "terratorch",
+   "vllm_class": "Terratorch",
+   "task": "embedding",
+   "reason": "任务类型 embedding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "HF_ColBERT": {
+   "tier": "L1",
+   "family": null,
+   "module": "colbert",
+   "vllm_class": "ColBERTModel",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ColBERTModernBertModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "colbert",
+   "vllm_class": "ColBERTModernBertModel",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ColBERTJinaRobertaModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "colbert",
+   "vllm_class": "ColBERTJinaRobertaModel",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ColBERTLfm2Model": {
+   "tier": "L1",
+   "family": null,
+   "module": "colbert",
+   "vllm_class": "ColBERTLfm2Model",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "JinaForRanking": {
+   "tier": "L1",
+   "family": null,
+   "module": "jina",
+   "vllm_class": "JinaForRanking",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ColModernVBertForRetrieval": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "colmodernvbert",
+   "vllm_class": "ColModernVBertForRetrieval",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ColQwen3": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "colqwen3",
+   "vllm_class": "ColQwen3Model",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "OpsColQwen3Model": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "colqwen3",
+   "vllm_class": "ColQwen3Model",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ColQwen3_5": {
+   "tier": "L1",
+   "family": "gdn-hybrid",
+   "module": "colqwen3_5",
+   "vllm_class": "ColQwen3_5Model",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3VLNemotronEmbedModel": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "colqwen3",
+   "vllm_class": "ColQwen3Model",
+   "task": "late_interaction",
+   "reason": "任务类型 late_interaction（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "InternLM2ForRewardModel": {
+   "tier": "L1",
+   "family": "internlm",
+   "module": "internlm2",
+   "vllm_class": "InternLM2ForRewardModel",
+   "task": "reward",
+   "reason": "任务类型 reward（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen2ForRewardModel": {
+   "tier": "L1",
+   "family": "qwen2",
+   "module": "qwen2_rm",
+   "vllm_class": "Qwen2ForRewardModel",
+   "task": "reward",
+   "reason": "任务类型 reward（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen2ForProcessRewardModel": {
+   "tier": "L1",
+   "family": "qwen2",
+   "module": "qwen2_rm",
+   "vllm_class": "Qwen2ForProcessRewardModel",
+   "task": "reward",
+   "reason": "任务类型 reward（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "BertForTokenClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "bert",
+   "vllm_class": "BertForTokenClassification",
+   "task": "token_classification",
+   "reason": "任务类型 token_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ModernBertForTokenClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "modernbert",
+   "vllm_class": "ModernBertForTokenClassification",
+   "task": "token_classification",
+   "reason": "任务类型 token_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "OpenAIPrivacyFilterForTokenClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "openai_privacy_filter",
+   "vllm_class": "OpenAIPrivacyFilterForTokenClassification",
+   "task": "token_classification",
+   "reason": "任务类型 token_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3ASRForcedAlignerForTokenClassification": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_asr_forced_aligner",
+   "vllm_class": "Qwen3ASRForcedAlignerForTokenClassification",
+   "task": "token_classification",
+   "reason": "任务类型 token_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "RobertaForTokenClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "roberta",
+   "vllm_class": "RobertaForTokenClassification",
+   "task": "token_classification",
+   "reason": "任务类型 token_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "XLMRobertaForTokenClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "roberta",
+   "vllm_class": "RobertaForTokenClassification",
+   "task": "token_classification",
+   "reason": "任务类型 token_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "BertForSequenceClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "bert",
+   "vllm_class": "BertForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GPT2ForSequenceClassification": {
+   "tier": "L1",
+   "family": "gpt2",
+   "module": "gpt2",
+   "vllm_class": "GPT2ForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GteNewForSequenceClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "bert_with_rope",
+   "vllm_class": "GteNewForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "JambaForSequenceClassification": {
+   "tier": "L1",
+   "family": "jamba",
+   "module": "jamba",
+   "vllm_class": "JambaForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlamaBidirectionalForSequenceClassification": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama",
+   "vllm_class": "LlamaBidirectionalForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ModernBertForSequenceClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "modernbert",
+   "vllm_class": "ModernBertForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "RobertaForSequenceClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "roberta",
+   "vllm_class": "RobertaForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "XLMRobertaForSequenceClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "roberta",
+   "vllm_class": "RobertaForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "JinaVLForRanking": {
+   "tier": "L1",
+   "family": null,
+   "module": "jina_vl",
+   "vllm_class": "JinaVLForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlamaNemotronVLForSequenceClassification": {
+   "tier": "L1",
+   "family": "nemotron",
+   "module": "nemotron_vl",
+   "vllm_class": "LlamaNemotronVLForSequenceClassification",
+   "task": "sequence_classification",
+   "reason": "任务类型 sequence_classification（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "AriaForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "aria",
+   "vllm_class": "AriaForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "AudioFlamingo3ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "audioflamingo3",
+   "vllm_class": "AudioFlamingo3ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "BagelForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "bagel",
+   "vllm_class": "BagelForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "BeeForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "bee",
+   "vllm_class": "BeeForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Blip2ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "blip2",
+   "vllm_class": "Blip2ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Cohere2VisionForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "cohere2_vision",
+   "vllm_class": "Cohere2VisionForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Cosmos3ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "cosmos3",
+   "vllm_class": "Cosmos3ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Cosmos3EdgeForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "cosmos3_edge",
+   "vllm_class": "Cosmos3EdgeForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DeepseekVLV2ForCausalLM": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "deepseek_vl2",
+   "vllm_class": "DeepseekVLV2ForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DeepseekOCRForCausalLM": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "deepseek_ocr",
+   "vllm_class": "DeepseekOCRForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DeepseekOCR2ForCausalLM": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "deepseek_ocr2",
+   "vllm_class": "DeepseekOCR2ForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Dots3NoteForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "vllm.models.dots3_note",
+   "vllm_class": "Dots3NoteForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "UnlimitedOCRForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "unlimited_ocr",
+   "vllm_class": "UnlimitedOCRForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DotsOCRForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "dots_ocr",
+   "vllm_class": "DotsOCRForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Eagle2_5_VLForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "eagle2_5_vl",
+   "vllm_class": "Eagle2_5_VLForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Ernie4_5_VLMoeForConditionalGeneration": {
+   "tier": "L1",
+   "family": "ernie",
+   "module": "ernie45_vl",
+   "vllm_class": "Ernie4_5_VLMoeForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Exaone4_5_ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "exaone4_5",
+   "vllm_class": "Exaone4_5_ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "FireRedASR2ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "fireredasr2",
+   "vllm_class": "FireRedASR2ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "FunASRForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "funasr",
+   "vllm_class": "FunASRForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "FunAudioChatForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "funaudiochat",
+   "vllm_class": "FunAudioChatForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Gemma3ForConditionalGeneration": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "gemma3_mm",
+   "vllm_class": "Gemma3ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Gemma3nForConditionalGeneration": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "gemma3n_mm",
+   "vllm_class": "Gemma3nForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DiffusionGemmaForBlockDiffusion": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "diffusion_gemma",
+   "vllm_class": "DiffusionGemmaForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Gemma4ForConditionalGeneration": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "gemma4_mm",
+   "vllm_class": "Gemma4ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Gemma4UnifiedForConditionalGeneration": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "gemma4_unified",
+   "vllm_class": "Gemma4UnifiedForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GlmAsrForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "glmasr",
+   "vllm_class": "GlmAsrForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GLM4VForCausalLM": {
+   "tier": "L1",
+   "family": "glm-dsa",
+   "module": "glm4v",
+   "vllm_class": "GLM4VForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Glm4vForConditionalGeneration": {
+   "tier": "L1",
+   "family": "glm-dsa",
+   "module": "glm4_1v",
+   "vllm_class": "Glm4vForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Glm4vMoeForConditionalGeneration": {
+   "tier": "L1",
+   "family": "glm-dsa",
+   "module": "glm4_1v",
+   "vllm_class": "Glm4vMoeForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GlmOcrForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "glm_ocr",
+   "vllm_class": "GlmOcrForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GraniteSpeechForConditionalGeneration": {
+   "tier": "L1",
+   "family": "granite",
+   "module": "granite_speech",
+   "vllm_class": "GraniteSpeechForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GraniteSpeechPlusForConditionalGeneration": {
+   "tier": "L1",
+   "family": "granite",
+   "module": "granite_speech_plus",
+   "vllm_class": "GraniteSpeechPlusForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Granite4VisionForConditionalGeneration": {
+   "tier": "L1",
+   "family": "granite",
+   "module": "granite4_vision",
+   "vllm_class": "Granite4VisionForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "H2OVLChatModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "h2ovl",
+   "vllm_class": "H2OVLChatModel",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "InternVLChatModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "internvl",
+   "vllm_class": "InternVLChatModel",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "InternS1ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "interns1",
+   "vllm_class": "InternS1ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "InternVLForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "interns1",
+   "vllm_class": "InternS1ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "InternS1ProForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "interns1_pro",
+   "vllm_class": "InternS1ProForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "InternS2MobiusForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "interns2_mobius",
+   "vllm_class": "InternS2MobiusForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "InternS2PreviewForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "interns2_preview",
+   "vllm_class": "InternS2PreviewForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Idefics3ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "idefics3",
+   "vllm_class": "Idefics3ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "IsaacForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "isaac",
+   "vllm_class": "IsaacForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "KananaVForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "kanana_v",
+   "vllm_class": "KananaVForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "KeyeForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "keye",
+   "vllm_class": "KeyeForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "KeyeVL1_5ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "keye_vl1_5",
+   "vllm_class": "KeyeVL1_5ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "KimiVLForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "kimi_vl",
+   "vllm_class": "KimiVLForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "KimiK25ForConditionalGeneration": {
+   "tier": "L1",
+   "family": "kimi",
+   "module": "kimi_k25",
+   "vllm_class": "KimiK25ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "KimiK3ForConditionalGeneration": {
+   "tier": "L1",
+   "family": "kimi",
+   "module": "vllm.models.kimi_k3",
+   "vllm_class": "KimiK3ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）（多模态包装器：文本侧 KimiLinearForCausalLM 可走 L0，visual 侧禁用）",
+   "aliases": [],
+   "text_side": {
+    "arch": "KimiLinearForCausalLM",
+    "tier": "L0",
+    "family": "kimi"
+   }
+  },
+  "MoonshotKimiaForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "kimi_audio",
+   "vllm_class": "KimiAudioForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MossTranscribeDiarizeForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "moss_transcribe_diarize",
+   "vllm_class": "MossTranscribeDiarizeForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LightOnOCRForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "lightonocr",
+   "vllm_class": "LightOnOCRForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Lfm2VlForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "lfm2_vl",
+   "vllm_class": "Lfm2VLForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Llama4ForConditionalGeneration": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "mllama4",
+   "vllm_class": "Llama4ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Llama_Nemotron_Nano_VL": {
+   "tier": "L1",
+   "family": "nemotron",
+   "module": "nemotron_vl",
+   "vllm_class": "LlamaNemotronVLChatModel",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlavaForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "llava",
+   "vllm_class": "LlavaForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlavaNextVideoForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "llava_next_video",
+   "vllm_class": "LlavaNextVideoForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlavaOnevisionForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "llava_onevision",
+   "vllm_class": "LlavaOnevisionForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlavaOnevision2ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "llava_onevision2",
+   "vllm_class": "LlavaOnevision2ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MiDashengLMModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "midashenglm",
+   "vllm_class": "MiDashengLMModel",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MiMoV2OmniForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "mimo_v2_omni",
+   "vllm_class": "MiMoV2OmniForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MiniMaxM3SparseForConditionalGeneration": {
+   "tier": "L1",
+   "family": "minimax",
+   "module": "vllm.models.minimax_m3",
+   "vllm_class": "MiniMaxM3SparseForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）（多模态包装器：文本侧 MiniMaxM3SparseForCausalLM 可走 L0，visual 侧禁用）",
+   "aliases": [],
+   "text_side": {
+    "arch": "MiniMaxM3SparseForCausalLM",
+    "tier": "L0",
+    "family": "minimax"
+   }
+  },
+  "MiniCPMO": {
+   "tier": "L1",
+   "family": null,
+   "module": "minicpmo",
+   "vllm_class": "MiniCPMO",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MiniCPMV": {
+   "tier": "L1",
+   "family": null,
+   "module": "minicpmv",
+   "vllm_class": "MiniCPMV",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MiniCPMV4_6ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "minicpmv4_6",
+   "vllm_class": "MiniCPMV4_6ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Mistral3ForConditionalGeneration": {
+   "tier": "L1",
+   "family": "mistral",
+   "module": "mistral3",
+   "vllm_class": "Mistral3ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MolmoForCausalLM": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "molmo",
+   "vllm_class": "MolmoForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Molmo2ForConditionalGeneration": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "molmo2",
+   "vllm_class": "Molmo2ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Moondream3ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "moondream3",
+   "vllm_class": "Moondream3ForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MossAudioModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "moss_audio",
+   "vllm_class": "MossAudioModel",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "HfMoondream": {
+   "tier": "L1",
+   "family": null,
+   "module": "moondream3",
+   "vllm_class": "Moondream3ForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "NemotronH_Nano_VL_V2": {
+   "tier": "L1",
+   "family": "nemotron",
+   "module": "nano_nemotron_vl",
+   "vllm_class": "NemotronH_Nano_VL_V2",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "NemotronH_Nano_Omni_Reasoning_V3": {
+   "tier": "L1",
+   "family": "nemotron",
+   "module": "nano_nemotron_vl",
+   "vllm_class": "NemotronH_Nano_VL_V2",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "NemotronH_Super_Omni_Reasoning_V3": {
+   "tier": "L1",
+   "family": "nemotron",
+   "module": "nano_nemotron_vl",
+   "vllm_class": "NemotronH_Nano_VL_V2",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "NemotronH_Omni_Reasoning_V3": {
+   "tier": "L1",
+   "family": "nemotron",
+   "module": "nano_nemotron_vl",
+   "vllm_class": "NemotronH_Nano_VL_V2",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "NVLM_D": {
+   "tier": "L1",
+   "family": null,
+   "module": "nvlm_d",
+   "vllm_class": "NVLM_D_Model",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MuseGlimmerForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "muse_glimmer",
+   "vllm_class": "MuseGlimmerForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "OpenCUAForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "opencua",
+   "vllm_class": "OpenCUAForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "OpenPanguVLForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "openpangu_vl",
+   "vllm_class": "OpenPanguVLForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "OpenVLAForActionPrediction": {
+   "tier": "L1",
+   "family": null,
+   "module": "openvla",
+   "vllm_class": "OpenVLAForActionPrediction",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Ovis": {
+   "tier": "L1",
+   "family": null,
+   "module": "ovis",
+   "vllm_class": "Ovis",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Ovis2_5": {
+   "tier": "L1",
+   "family": null,
+   "module": "ovis2_5",
+   "vllm_class": "Ovis2_5",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Ovis2_6ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "ovis2_5",
+   "vllm_class": "Ovis2_5",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Ovis2_6_MoeForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "ovis2_5",
+   "vllm_class": "Ovis2_5",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "PaddleOCRVLForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "paddleocr_vl",
+   "vllm_class": "PaddleOCRVLForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "PaliGemmaForConditionalGeneration": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "paligemma",
+   "vllm_class": "PaliGemmaForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Phi4ForCausalLMV": {
+   "tier": "L1",
+   "family": "phi",
+   "module": "phi4siglip",
+   "vllm_class": "Phi4ForCausalLMV",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Phi4MMForCausalLM": {
+   "tier": "L1",
+   "family": "phi",
+   "module": "phi4mm",
+   "vllm_class": "Phi4MMForCausalLM",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "PixtralForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "pixtral",
+   "vllm_class": "PixtralForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "QianfanOCRForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "qianfan_ocr",
+   "vllm_class": "QianfanOCRForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen2_5_VLForConditionalGeneration": {
+   "tier": "L1",
+   "family": "qwen2",
+   "module": "qwen2_5_vl",
+   "vllm_class": "Qwen2_5_VLForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen2AudioForConditionalGeneration": {
+   "tier": "L1",
+   "family": "qwen2",
+   "module": "qwen2_audio",
+   "vllm_class": "Qwen2AudioForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen2_5OmniModel": {
+   "tier": "L1",
+   "family": "qwen2",
+   "module": "qwen2_5_omni_thinker",
+   "vllm_class": "Qwen2_5OmniThinkerForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen2_5OmniForConditionalGeneration": {
+   "tier": "L1",
+   "family": "qwen2",
+   "module": "qwen2_5_omni_thinker",
+   "vllm_class": "Qwen2_5OmniThinkerForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3OmniMoeForConditionalGeneration": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_omni_moe_thinker",
+   "vllm_class": "Qwen3OmniMoeThinkerForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3ASRForConditionalGeneration": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_asr",
+   "vllm_class": "Qwen3ASRForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3ASRRealtimeGeneration": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_asr_realtime",
+   "vllm_class": "Qwen3ASRRealtimeGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3VLForConditionalGeneration": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_vl",
+   "vllm_class": "Qwen3VLForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3VLMoeForConditionalGeneration": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_vl_moe",
+   "vllm_class": "Qwen3VLMoeForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3_5ForConditionalGeneration": {
+   "tier": "L1",
+   "family": "gdn-hybrid",
+   "module": "qwen3_5",
+   "vllm_class": "Qwen3_5ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）（多模态包装器：文本侧 Qwen3_5ForCausalLM 可走 L0，visual 侧禁用）",
+   "aliases": [],
+   "text_side": {
+    "arch": "Qwen3_5ForCausalLM",
+    "tier": "L0",
+    "family": "gdn-hybrid"
+   }
+  },
+  "Qwen3_5MoeForConditionalGeneration": {
+   "tier": "L1",
+   "family": "gdn-hybrid",
+   "module": "qwen3_5",
+   "vllm_class": "Qwen3_5MoeForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）（多模态包装器：文本侧 Qwen3_5ForCausalLM 可走 L0，visual 侧禁用）",
+   "aliases": [],
+   "text_side": {
+    "arch": "Qwen3_5ForCausalLM",
+    "tier": "L0",
+    "family": "gdn-hybrid"
+   }
+  },
+  "RForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "rvl",
+   "vllm_class": "RForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "SkyworkR1VChatModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "skyworkr1v",
+   "vllm_class": "SkyworkR1VChatModel",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "SmolVLMForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "smolvlm",
+   "vllm_class": "SmolVLMForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "StepVLForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "step_vl",
+   "vllm_class": "StepVLForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Step3VLForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "step3_vl",
+   "vllm_class": "Step3VLForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Step3p7ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "step3p7",
+   "vllm_class": "Step3p7ForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "UltravoxModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "ultravox",
+   "vllm_class": "UltravoxModel",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "VoxtralForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "voxtral",
+   "vllm_class": "VoxtralForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "VoxtralRealtimeGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "voxtral_realtime",
+   "vllm_class": "VoxtralRealtimeGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "CohereAsrForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "cohere_asr",
+   "vllm_class": "CohereAsrForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "NemotronParseForConditionalGeneration": {
+   "tier": "L1",
+   "family": "nemotron",
+   "module": "nemotron_parse",
+   "vllm_class": "NemotronParseForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "WhisperForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "whisper",
+   "vllm_class": "WhisperForConditionalGeneration",
+   "task": "multimodal",
+   "reason": "任务类型 multimodal（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ExtractHiddenStatesModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "extract_hidden_states",
+   "vllm_class": "ExtractHiddenStatesModel",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MiMoMTPModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "mimo_mtp",
+   "vllm_class": "MiMoMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MiMoV2MTPModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "mimo_v2_mtp",
+   "vllm_class": "MiMoV2MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MiMoV2OmniMTPModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "mimo_v2_mtp",
+   "vllm_class": "MiMoV2OmniMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "EagleCohereForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "cohere_eagle",
+   "vllm_class": "EagleCohereForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "EagleLlamaForCausalLM": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama_eagle",
+   "vllm_class": "EagleLlamaForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "EagleLlama4ForCausalLM": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama4_eagle",
+   "vllm_class": "EagleLlama4ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "EagleMiniCPMForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "minicpm_eagle",
+   "vllm_class": "EagleMiniCPMForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DFlashDraftModel": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_dflash",
+   "vllm_class": "DFlashQwen3ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DFlash2DraftModel": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_dflash2",
+   "vllm_class": "DFlash2Qwen3ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MuseGlimmerAssistantModel": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_dflash",
+   "vllm_class": "DFlashQwen3ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DFlashMuseGlimmerAssistantModel": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_dflash",
+   "vllm_class": "DFlashQwen3ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DSparkDraftModel": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "vllm.models.deepseek_v4",
+   "vllm_class": "DSparkDeepseekV4ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3DSparkModel": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_dspark",
+   "vllm_class": "Qwen3DSparkForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3OmniDSparkModel": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_dspark",
+   "vllm_class": "Qwen3DSparkForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "K3DSparkModel": {
+   "tier": "L1",
+   "family": "kimi",
+   "module": "vllm.models.kimi_k3.nvidia.dspark_mla",
+   "vllm_class": "K3DSparkForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DFlashLagunaForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "laguna_dflash",
+   "vllm_class": "DFlashLagunaForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Gemma4DSparkModel": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "gemma4_dspark",
+   "vllm_class": "Gemma4DSparkForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "PEagleDraftModel": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama_eagle3",
+   "vllm_class": "Eagle3LlamaForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "PeagleLlamaForCausalLM": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama_eagle3",
+   "vllm_class": "Eagle3LlamaForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Eagle3LlamaForCausalLM": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama_eagle3",
+   "vllm_class": "Eagle3LlamaForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Eagle3MiniMaxM2ForCausalLM": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama_eagle3",
+   "vllm_class": "Eagle3LlamaForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LlamaForCausalLMEagle3": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama_eagle3",
+   "vllm_class": "Eagle3LlamaForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Eagle3Qwen2_5vlForCausalLM": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama_eagle3",
+   "vllm_class": "Eagle3LlamaForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Eagle3Qwen3vlForCausalLM": {
+   "tier": "L1",
+   "family": "llama",
+   "module": "llama_eagle3",
+   "vllm_class": "Eagle3LlamaForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Eagle3Qwen3ForCausalLM": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_eagle3",
+   "vllm_class": "Eagle3Qwen3ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "PeagleQwen3ForCausalLM": {
+   "tier": "L1",
+   "family": "qwen3",
+   "module": "qwen3_eagle3",
+   "vllm_class": "Eagle3Qwen3ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "EagleMistralForCausalLM": {
+   "tier": "L1",
+   "family": "mistral",
+   "module": "mistral_eagle",
+   "vllm_class": "EagleMistralForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "EagleMistralLarge3ForCausalLM": {
+   "tier": "L1",
+   "family": "mistral",
+   "module": "mistral_large_3_eagle",
+   "vllm_class": "EagleMistralLarge3ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Eagle3DeepseekV2ForCausalLM": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "deepseek_eagle3",
+   "vllm_class": "Eagle3DeepseekV2ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Eagle3DeepseekV3ForCausalLM": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "deepseek_eagle3",
+   "vllm_class": "Eagle3DeepseekV2ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "EagleDeepSeekMTPModel": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "deepseek_eagle",
+   "vllm_class": "EagleDeepseekV3ForCausalLM",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DeepSeekMTPModel": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "deepseek_mtp",
+   "vllm_class": "DeepSeekMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DeepseekV32MTPModel": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "vllm.models.deepseek_v32",
+   "vllm_class": "DeepseekV32MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Dots3NoteMTPModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "vllm.models.dots3_note",
+   "vllm_class": "Dots3NoteMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "DeepSeekV4MTPModel": {
+   "tier": "L1",
+   "family": "deepseek-mla",
+   "module": "vllm.models.deepseek_v4",
+   "vllm_class": "DeepSeekV4MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "BailingMoeV3MTPModel": {
+   "tier": "L1",
+   "family": "bailing",
+   "module": "bailing_moe_v3_mtp",
+   "vllm_class": "BailingMoeV3MTPModel",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MiniMaxM3MTP": {
+   "tier": "L1",
+   "family": "minimax",
+   "module": "vllm.models.minimax_m3",
+   "vllm_class": "MiniMaxM3MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "BailingMoeV25MTPModel": {
+   "tier": "L1",
+   "family": "bailing",
+   "module": "bailing_moe_mtp",
+   "vllm_class": "BailingMoeV25MTPModel",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "InklingMTPModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "vllm.models.inkling",
+   "vllm_class": "InklingMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Gemma4MTPModel": {
+   "tier": "L1",
+   "family": "gemma",
+   "module": "gemma4_mtp",
+   "vllm_class": "Gemma4MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ErnieMTPModel": {
+   "tier": "L1",
+   "family": "ernie",
+   "module": "ernie_mtp",
+   "vllm_class": "ErnieMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "ExaoneMoeMTP": {
+   "tier": "L1",
+   "family": null,
+   "module": "exaone_moe_mtp",
+   "vllm_class": "ExaoneMoeMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Exaone4_5_MTP": {
+   "tier": "L1",
+   "family": null,
+   "module": "exaone4_5_mtp",
+   "vllm_class": "Exaone4_5_MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "NemotronHMTPModel": {
+   "tier": "L1",
+   "family": "nemotron",
+   "module": "nemotron_h_mtp",
+   "vllm_class": "NemotronHMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "LongCatFlashMTPModel": {
+   "tier": "L1",
+   "family": "longcat",
+   "module": "longcat_flash_mtp",
+   "vllm_class": "LongCatFlashMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Glm4MoeMTPModel": {
+   "tier": "L1",
+   "family": "glm-dsa",
+   "module": "glm4_moe_mtp",
+   "vllm_class": "Glm4MoeMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Glm4MoeLiteMTPModel": {
+   "tier": "L1",
+   "family": "glm-dsa",
+   "module": "glm4_moe_lite_mtp",
+   "vllm_class": "Glm4MoeLiteMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "GlmOcrMTPModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "glm_ocr_mtp",
+   "vllm_class": "GlmOcrMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "MedusaModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "medusa",
+   "vllm_class": "Medusa",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "OpenPanguMTPModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "openpangu_mtp",
+   "vllm_class": "OpenPanguMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3NextMTP": {
+   "tier": "L1",
+   "family": "gdn-hybrid",
+   "module": "qwen3_next_mtp",
+   "vllm_class": "Qwen3NextMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Step3p5MTP": {
+   "tier": "L1",
+   "family": null,
+   "module": "step3p5_mtp",
+   "vllm_class": "Step3p5MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3_5MTP": {
+   "tier": "L1",
+   "family": "gdn-hybrid",
+   "module": "qwen3_5_mtp",
+   "vllm_class": "Qwen3_5MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "Qwen3_5MoeMTP": {
+   "tier": "L1",
+   "family": "gdn-hybrid",
+   "module": "qwen3_5_mtp",
+   "vllm_class": "Qwen3_5MoeMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "InternS2MobiusMTP": {
+   "tier": "L1",
+   "family": null,
+   "module": "interns2_mobius",
+   "vllm_class": "InternS2MobiusMTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "HYV3MTPModel": {
+   "tier": "L1",
+   "family": "hy",
+   "module": "hy_v3_mtp",
+   "vllm_class": "HYV3MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "KimiK3MTPModel": {
+   "tier": "L1",
+   "family": "kimi",
+   "module": "vllm.models.kimi_k3",
+   "vllm_class": "KimiK3MTP",
+   "task": "speculative_decoding",
+   "reason": "任务类型 speculative_decoding（非文本生成主路径）→ L1 兜底/专用头（P1.5 评估）",
+   "aliases": []
+  },
+  "FlexOlmoForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMoEForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "GPTBigCodeForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "HunYuanDenseV1ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "HunYuanMoEV1ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMoEForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "OlmoForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "Olmo2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "Olmo3ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "SmolLM3ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "Starcoder2ForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "VaultGemmaForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "Emu3ForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMultiModalForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "HunYuanVLForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMultiModalForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "VibeVoiceAsrForConditionalGeneration": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMultiModalForCausalLM",
+   "task": "transformers_supported",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForCausalLM",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersMoEForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMoEForCausalLM",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersMultiModalForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMultiModalForCausalLM",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersMultiModalMoEForCausalLM": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMultiModalMoEForCausalLM",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersEmbeddingModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersEmbeddingModel",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersMoEEmbeddingModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMoEEmbeddingModel",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersMultiModalEmbeddingModel": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMultiModalEmbeddingModel",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersForSequenceClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersForSequenceClassification",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersMoEForSequenceClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMoEForSequenceClassification",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "TransformersMultiModalForSequenceClassification": {
+   "tier": "L1",
+   "family": null,
+   "module": "transformers",
+   "vllm_class": "TransformersMultiModalForSequenceClassification",
+   "task": "transformers_backend",
+   "reason": "vLLM transformers 后端条目 → 本引擎 L1 兜底层（transformers AutoModel 运行）",
+   "aliases": []
+  },
+  "MotifForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.10.2 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Phi3SmallForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.9.2 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Phi4FlashForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.10.2 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Phi4MultimodalForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.12.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "JAISLMHeadModel": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.22.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "ErnieModel": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "ErnieForSequenceClassification": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "ErnieForTokenClassification": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "InternLM2VEForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "QWenLMHeadModel": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "QwenVLForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "InternLMForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "DonutForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.10.2 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "MllamaForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.10.2 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "XverseForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Dots1ForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "BambaForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "MiniMaxForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "MiniMaxText01ForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "MiniMaxM1ForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "MiniMaxVL01ForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "BaiChuanForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "BaichuanForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "AquilaModel": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.24.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "AquilaForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.24.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Grok1ModelForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.24.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Grok1ForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.24.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "TarsierForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.24.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Tarsier2ForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.23.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "MantisForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.24.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "MusicFlamingoForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.24.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "AyaVisionForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.24.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "TeleChatForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.25.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "PersimmonForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.25.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "FuyuForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.25.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Plamo2ForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.26.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "OuroForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.26.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "ArcticForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "ChameleonForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Cheers": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "CheersForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "Fairseq2LlamaForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "FireRedLIDForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "GritLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "HCXVisionForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "MPTForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "MptForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "RWForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "StableLMEpochForCausalLM": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "PrithviGeoSpatialMAE": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "removed",
+   "reason": "vLLM 0.28.0 已移除该架构 → 显式不支持（建议迁移至后继架构）",
+   "aliases": []
+  },
+  "BartModel": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "out_of_tree",
+   "reason": "out-of-tree 插件架构（https://github.com/vllm-project/bart-plugin）→ 显式不支持",
+   "aliases": []
+  },
+  "BartForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "out_of_tree",
+   "reason": "out-of-tree 插件架构（https://github.com/vllm-project/bart-plugin）→ 显式不支持",
+   "aliases": []
+  },
+  "Florence2ForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "out_of_tree",
+   "reason": "out-of-tree 插件架构（https://github.com/vllm-project/bart-plugin）→ 显式不支持",
+   "aliases": []
+  },
+  "MBartForConditionalGeneration": {
+   "tier": "L2",
+   "family": null,
+   "module": null,
+   "vllm_class": null,
+   "task": "out_of_tree",
+   "reason": "out-of-tree 插件架构（https://github.com/vllm-project/bart-plugin）→ 显式不支持",
+   "aliases": []
+  }
+ }
+}

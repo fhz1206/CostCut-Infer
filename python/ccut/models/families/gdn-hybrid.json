@@ -1,0 +1,47 @@
+{
+ "family": "gdn-hybrid",
+ "family_label": "Ornith-1.5 / Qwen3.5（GDN 混合注意力 + FP8 MoE + MTP，35B-A3B）",
+ "matches_architectures": ["OrnithForCausalLM"],
+ "layer_kind": "hybrid_gdn",
+ "full_attention_interval": 4,
+ "full_attention_offset": 3,
+ "attn": {
+  "type": "gdn_linear",
+  "qk_norm": true,
+  "output_gate": true,
+  "in_proj_qkv": {
+   "q_heads": 16, "k_heads": 16, "v_heads": 32,
+   "k_head_dim": 128, "v_head_dim": 128
+  },
+  "conv1d_kernel": 4,
+  "full_attn": {
+   "q_heads": 16, "kv_heads": 2, "head_dim": 256,
+   "qk_norm": true,
+   "softcap": null
+  }
+ },
+ "mlp": {
+  "type": "moe_swiglu",
+  "expert_tensor_pattern": "model.language_model.layers.{layer}.mlp.experts.{expert}.{proj}_proj",
+  "router": "model.language_model.layers.{layer}.mlp.gate",
+  "shared_expert": "model.language_model.layers.{layer}.mlp.shared_expert",
+  "shared_expert_gate": "model.language_model.layers.{layer}.mlp.shared_expert_gate"
+ },
+ "norm": {"type": "rmsnorm", "qk_norm": true},
+ "mtp": {
+  "layers": 1,
+  "experts_fused_3d": true,
+  "pattern": "mtp.layers.{layer}",
+  "fc": "mtp.fc.weight",
+  "norms": ["mtp.norm.weight", "mtp.pre_fc_norm_embedding.weight", "mtp.pre_fc_norm_hidden.weight"]
+ },
+ "tensors": {
+  "embed": "model.language_model.embed_tokens.weight",
+  "final_norm": "model.language_model.norm.weight",
+  "lm_head": "lm_head.weight"
+ },
+ "kv_cache": {
+  "full_attn_only": true,
+  "gdn_state_per_request": {"k_dim": 128, "v_dim": 128, "v_heads": 32}
+ }
+}

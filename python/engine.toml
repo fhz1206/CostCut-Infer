@@ -1,94 +1,71 @@
-# ============================================================
-# liteengine 配置文件（纯 Python 推理引擎）
-# ------------------------------------------------------------
-# 三个区块，从上往下看即可：
-#   [default]    默认模型：填下方某个 [model] 块的 name
-#   [model]      模型列表：每个模型一个 [model] 块（只支持这种写法）
-#   [inference]  生成参数（温度 / 采样 / 系统提示词）
-#   [chat]       对话历史设置
-#
-# 注意：liteengine 仅支持 Qwen3_5Moe 文本架构；其它架构的模型
-# 可以注册显示，但 /model 切换时会提示不支持。
-# ============================================================
+# CostCut-Infer 默认配置（toml 格式）
+# 注意：所有键 casefold 后匹配；section 名也 casefold。CLI > toml > env > 默认。
 
-[default]
-model = "Qwen3.6-35B-A3B-AWQ-4bit"    # 默认对话模型：须与某个 [model] 块的 name 一致
+[engine]
+max_num_seqs = 8
+max_num_batched_tokens = 8192
+chunked_prefill_size = 4096
+num_scheduler_threads = 1
+num_worker_threads = 4
+scheduler_delay_factor = 0.0
+log_level = "INFO"
+mem_budget_gb = 2.5
 
-# ------------------------------------------------------------
-# 模型列表（每个模型一个 [model] 块，字段均可省略）
-#   name              模型短名（必填，须唯一，/model 切换用）
-#   path              模型目录（省略时默认 models/<name>）
-#   expert_cache_max  专家反量化缓存上限（条目，每条约 12MB，默认 128 ≈ 1.5GB）
-# ------------------------------------------------------------
+[kv_cache]
+kv_l1_bytes = 1073741824  # 1GB
+kv_l2_dir = "./.kv_cache"
+kv_l2_max_bytes = 68719476736  # 64GB
+kv_policy = "hybrid"  # hybrid / disk_first / memory_first
+kv_block_size = 16
+kv_evict_high_water = 0.8
+kv_evict_low_water = 0.6
+kv_hot_window_steps = 16
+kv_l2_compression = "none"  # none / lz4
+kv_cache_ttl_seconds = 0
 
-[model]
-name = "Qwen3.6-35B-A3B-AWQ-4bit"     # 短名：主对话模型
-path = "models/Qwen3.6-35B-A3B-AWQ-4bit"
-expert_cache_max = 128               # 专家缓存上限（跨层共享，与层数无关）
-dspark_model = "Qwen3.6-35B-A3B-speculator.dspark"                     # 投机解码草稿模型目录；留空 = 禁用投机（标准自回归）
-# rope_type：default（标准 RoPE）/ yarn（完整 YaRN——NTK-by-parts 波长斜坡插值 + 注意力温度缩放）
-# rope_scaling：factor=外推倍数；original_max_position_embeddings=原始最大长度；beta_fast=低频保持边界；beta_slow=高频插值边界
-rope_type = "default"
-rope_scaling = { factor = 2.0, original_max_position_embeddings = 4096, beta_fast = 32.0, beta_slow = 1.0 }
+[experts]
+expert_residency = "zero"  # zero（零驻留）/ page_cache_only
+expert_ring_slots = 2
+expert_index_cache = "./.kv_cache/expert_index.json"
+expert_verify_crc = false
 
-[model]
-name = "Qwen3-ASR-1.7B"               # 短名（liteengine 不支持 ASR 架构，仅注册显示）
-path = "models/Qwen3-ASR-1.7B"
+[weights]
+weight_streaming = "auto"  # auto / on / off
+weight_ring_layers = 2
+weight_stream_chunk = "auto"  # auto / layer / sublayer
+weight_stream_bandwidth_log = true
 
-[model]
-name = "Router"                       # 短名（自定义路由模型，暂不支持）
-path = "models/Router"
+[quant]
+quantization = "auto"  # auto / fp8_per_token / int8_per_channel_weight_only / mxfp8 / nvfp4_per_token / int8_per_token / bf16
+quant_ignore = []  # 列表，正则字符串
+fp8_compute_mode = "w8a16"  # w8a16（默认精确反量化）/ w8a8（CPU 对照基准）
+kv_cache_dtype = "auto"  # auto（按 checkpoint kv_cache_scheme）/ bf16 / fp8
 
-# ------------------------------------------------------------
-# 生成参数
-# ------------------------------------------------------------
-[inference]
-temperature = 0.9          # 采样温度：越高越发散（<=0 为贪心，可复现）
-top_p = 0.9                # nucleus 采样：仅从累计概率 top_p 的 token 中采样（0~1）
-top_k = 0                  # 采样时只保留前 top_k 个候选（0 表示关闭）
-repetition_penalty = 1   # 重复惩罚：>1 抑制重复，=1 不干预
-max_new_tokens = 2048      # 单次回复的最大新 token 数（通常由 <|im_end|> 提前结束）
-system_prompt = ""                   # 系统提示词（空——不注入系统提示）
+[resources]
+resource_pct = 50  # 全局 CPU/内存/IO 比例（%）
+resource_cpu_pct = "auto"  # auto=resource_pct；显式覆盖可填整数或 "50%"
+resource_mem_pct = "auto"
+resource_io_pct = "auto"
+resource_monitor_interval = 1.0  # 秒
+resource_throttle = "auto"  # auto（超限自限）/ warn / off
 
-# 精度 / 优化开关（本机实测部分优化反而变慢——默认关闭，他机 / 其它精度模型可开启尝试）
-compute_dtype = "float32"      # 计算精度：fp32（本机 CPU 实测最优）/ fp16 / bf16（可选）
-expert_parallel = false        # 专家多线程并行（本机实测慢 ~5 倍——默认关，他机可试）
-int4_fused_matmul = true       # int4 融合 matmul（CPU 合成场景实测 1.89x——真实模型 z 转置适配已修复——开启）
-speculate = false              # 投机解码（本机实测慢——默认关；/speculate 可运行时切换）
-layer_offload = false          # AirLLM 风格层级卸载（层前向后释放专家缓存——降内存峰值；换层重反量化略慢）
+[pipeline]
+pipeline_depth = 3
+prefetch_layers_ahead = 2
+prefetch_mode = "auto"  # auto / avx2 / off
+expert_readahead_mb = 128
+speculative_route_history = 4
+pipeline_metrics = true
 
-# ------------------------------------------------------------
-# 设备推荐配置（按硬件选择 kind——推荐值如下，可覆盖）
-#   cpu：threads=物理核数、fp16=false、fused_matmul=false、expert_parallel=false（本机 12GB CPU 实测）
-#   gpu：threads=0（由 torch 管理）、fp16=true、fused_matmul=true、expert_parallel=true
-#   npu：threads=0、fp16=true、fused_matmul=true、expert_parallel=true（昇腾/寒武纪等 NPU）
-# ------------------------------------------------------------
-[device]
-kind = "cpu"               # 设备类型：cpu / gpu / npu（推荐值随 kind 切换）
-threads = 0                # 推理线程数（0 = 自动；CPU 推荐物理核数）
-fp16 = false               # fp16 计算（GPU/NPU 推荐 true）
-fused_matmul = false       # int4 融合 matmul（GPU/NPU 推荐 true——CPU 需真实转置适配后开启）
-expert_parallel = false    # 专家多线程并行（多核/异构推荐 true——本机实测慢）
+[spec_decode]
+enable_mtp = true
+mtp_draft_tokens = 1
+enable_ngram = false
+ngram_window = 8
 
-# ------------------------------------------------------------
-# 对话历史
-# ------------------------------------------------------------
-[chat]
-max_history = 20           # 参与上下文的最大历史轮数
-auto_save_history = false  # 是否自动保存历史到 history_file
-history_file = ".chat_history.json"   # 历史记录文件路径
-
-# ------------------------------------------------------------
-[features]                        # 可开可关功能（默认保守——本机实测为准）
-speculate = false                 # 投机解码（dspark 草稿——加速生成；本机实测慢——默认关）
-streaming = true                  # 流式输出（逐 token 打印——CLI/TUI）
-layer_offload = false             # 层级 offload（AirLLM 风格——释放专家反量化缓存——真实 61 层防 OOM）
-
-# ===== PagedAttention（参考 vLLM——分页 KV 缓存，用户可调）=====
-[paging]
-num_blocks = 1024          # 物理块数（越大 KV 容量越大——内存占用越高）
-block_size = 32            # 每块 token 数（vLLM 默认 16——32 减少块表开销）
-
-# ===== continuous batching（参考 vLLM——请求批处理，用户可调）=====
-[batching]
-enable = true              # 请求入队/批处理调度（并发请求吞吐）
+[api]
+host = "0.0.0.0"
+port = 8000
+api_key = null  # null / 字符串
+sse_heartbeat_seconds = 15.0
+cors = true

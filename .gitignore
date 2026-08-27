@@ -28,13 +28,13 @@ libtorch/
 
 # ---- 模型权重 / 大文件（不提交——体积大）----
 # 整个模型目录（权重 + 缓存——不提交）
-models/
-models/**/*.safetensors
-models/**/*.dspark
-models/**/*.gguf
-models/**/*.bin
-models/**/*.pt
-models/**/*.pth
+python/models/
+python/models/**/*.safetensors
+python/models/**/*.dspark
+python/models/**/*.gguf
+python/models/**/*.bin
+python/models/**/*.pt
+python/models/**/*.pth
 models/**/*.onnx
 models/**/*.npz
 models/**/*.ggml

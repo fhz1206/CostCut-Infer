@@ -1,3 +1,0 @@
-# 项目 Rust 工具链：stable (1.97.1) —— 完整工具链名（本机默认，避免裸版本解析到损坏的专用工具链）
-[toolchain]
-channel = "stable-x86_64-pc-windows-gnu"

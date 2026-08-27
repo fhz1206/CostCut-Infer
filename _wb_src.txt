@@ -1,0 +1,28 @@
+    def write_block(
+        self,
+        block_id: int,
+        token_ids: list[int],
+        k: np.ndarray,
+        v: np.ndarray,
+        prev_hash: int,
+    ) -> int:
+        """写入满块并注册哈希。``k``/``v``: [block_tokens, kv_heads, head_dim]。
+
+        返回块哈希（coordinator 用它挂 L2 索引）。
+        """
+        b = self.blocks[block_id]
+        b.token_ids = list(token_ids)
+        b.prev_hash = prev_hash
+        b.block_hash = block_hash(prev_hash, token_ids)
+        b.last_access_step = self._step
+        b.on_disk = False
+        off = block_id * self.block_bytes
+        seg = self._buf[off : off + k.nbytes]
+        seg[:] = k.astype(np.float32, copy=False).reshape(-1).tobytes()
+        seg = self._buf[off + k.nbytes : off + k.nbytes + v.nbytes]
+        seg[:] = v.astype(np.float32, copy=False).reshape(-1).tobytes()
+        # 旧哈希解注册（槽位复用时）
+        if b.prev_hash or b.token_ids:
+            pass
+        self._hash2id[b.block_hash] = block_id
+        return b.block_hash

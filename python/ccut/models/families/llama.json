@@ -1,0 +1,21 @@
+{
+ "family": "llama",
+ "family_label": "Llama 2/3/4（标准 GQA + SwiGLU，可选 MoE）",
+ "matches_architectures": ["LlamaForCausalLM", "Llama2ForCausalLM", "Llama4ForCausalLM"],
+ "layer_kind": "all_full",
+ "attn": {
+  "type": "gqa",
+  "qk_norm": false,
+  "output_gate": false
+ },
+ "mlp": {
+  "type": "swiglu",
+  "expert_tensor_pattern": ""
+ },
+ "norm": {"type": "rmsnorm", "qk_norm": false},
+ "tensors": {
+  "embed": "model.embed_tokens.weight",
+  "final_norm": "model.norm.weight",
+  "lm_head": "lm_head.weight"
+ }
+}

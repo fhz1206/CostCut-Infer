@@ -1,179 +1,151 @@
-"""AWQ 反量化与惰性权重加载单元测试（M1 验收）。
+"""tests.test_quant — 量化子系统冒烟（K5 端到端：compressed-tensors 解析 + 各 method W8A16 数值）。"""
 
-覆盖：
-- 查表解包 vs 朴素移位参考（多形状）
-- 反量化 vs 朴素参考（fp32 / fp16 输出）
-- 真实模型张量抽样（依赖本地模型文件，验证布局与数值合理性）
-- WeightStore 惰性读取、元数据查询、异常路径
+from __future__ import annotations
 
-运行（仓库根目录）：python -m unittest discover -s tests -v
-"""
-import unittest
+import json
+import tempfile
+from pathlib import Path
 
-from numpy import allclose, array_equal, asarray, empty, float16, float32, int16, int32
-from numpy.random import default_rng
+import numpy as np
+import torch
 
-from io_.loader import WeightStore
-from quant import (QuantConfig, _unpack_colwise, _unpack_int4_colwise,
-                              dequantize, dequantize_awq)
-
-MODEL_DIR = "python/models/Qwen3.6-35B-A3B-AWQ-4bit"
-
-
-def naive_unpack(packed):
-    """朴素参考：8 次移位解包（int4 低位在前），并按 AWQ 列序重排还原真实列序。"""
-    packed = asarray(packed)
-    n, c = packed.shape
-    out = empty((n, c * 8), dtype=int32)
-    for i in range(8):
-        out[:, i::8] = (packed >> (4 * i)) & 0xF
-    # AWQ 非标准打包列序：线性解包后须按逆序 [0,4,1,5,2,6,3,7] 重排（vLLM _REVERSE_AWQ_PACK_ORDER）
-    return out.reshape(n, -1, 8)[:, :, (0, 4, 1, 5, 2, 6, 3, 7)].reshape(n, c * 8)
+from ccut.quant import kernels
+from ccut.quant.kv import (
+    kv_bytes_per_token,
+    quantize_kv_token,
+    dequantize_kv_token,
+    resolve_kv_dtype,
+)
+from ccut.quant.method import make_method_for_spec
+from ccut.quant.online import quantize_buffer_inplace
+from ccut.quant.registry import (
+    ONLINE_SHORTHANDS,
+    list_supported_quant,
+    resolve_checkpoint_quant,
+)
+from ccut.quant.spec import K_BF16, LayerQuantSpec, ScaleDesc, get_quant_key
 
 
-class TestUnpack(unittest.TestCase):
-    def test_unpack_matches_naive(self):
-        rng = default_rng(0)
-        for shape in [(8, 4), (64, 64), (2048, 64)]:
-            q = rng.integers(-(2**31), 2**31, size=shape, dtype=int32)
-            self.assertTrue(
-                array_equal(_unpack_int4_colwise(q), naive_unpack(q)),
-                f"shape={shape} 解包与朴素参考不一致",
-            )
+def test_fp8_e4m3_round_trip():
+    """FP8 e4m3 与 torch 参考全值域对拍。"""
+    torch.manual_seed(0)
+    x = (torch.randn(64, 32) * 3).numpy()
+    scale = np.abs(x).max(axis=0) / 448.0
+    q = np.clip(x / scale[None, :], -448, 448)
+    codes = kernels.float32_to_fp8_e4m3(q.ravel())
+    dec = kernels.fp8_e4m3_to_float32(codes).reshape(x.shape) * scale[None, :]
+    tr = torch.from_numpy(q).to(torch.float8_e4m3fn).float().numpy() * scale[None, :]
+    mask = np.abs(tr) > 1e-3
+    rel = np.abs(dec[mask] - tr[mask]) / np.abs(tr[mask])
+    assert float(rel.max()) < 0.05  # FP8 量化后 5% 容差
 
 
-class TestDequantizeAwq(unittest.TestCase):
-    def test_dequant_matches_naive(self):
-        rng = default_rng(1)
-        out, in_, gs = 128, 256, 32
-        groups = out // gs
-        qw = rng.integers(-(2**31), 2**31, size=(out, in_ // 8), dtype=int32)
-        qz = rng.integers(0, 2**31, size=(groups, in_ // 8), dtype=int32)
-        sc = rng.standard_normal((groups, in_)).astype(float16)
+def test_int8_w8a8_matches_torch():
+    """INT8 W8A8 整数累加 vs torch 参考。"""
+    torch.manual_seed(1)
+    xa = torch.randn(4, 16)
+    wb = torch.randint(-127, 127, (16, 8)).float()
+    scale_t = torch.rand(8) + 0.1
+    sc = xa.abs().max(dim=1).values / 127
+    xq = torch.clamp(torch.round(xa * (127 / sc)[:, None]), -127, 127).to(torch.int8)
+    acc = xq.long() @ wb.to(torch.int8).long()
+    y_ref = acc.float() * sc[:, None] * scale_t[None, :]
+    from ccut.quant.int8 import _quantize_per_token, _int8_matmul
 
-        ref_w = naive_unpack(qw).astype(int16)
-        ref_z = naive_unpack(qz).astype(int16).repeat(gs, axis=0)
-        ref_s = sc.astype(float32).repeat(gs, axis=0)
-        ref = (ref_w - ref_z).astype(float32) * ref_s
+    xq2, xs2 = _quantize_per_token(xa.numpy())
+    acc2 = _int8_matmul(xq2, wb.numpy())
+    y = acc2.astype(np.float32) * xs2[:, None] * scale_t.numpy()[None, :]
+    assert np.allclose(y, y_ref.numpy(), atol=1e-3)
 
-        got = dequantize_awq(qw, qz, sc)
-        self.assertEqual(got.shape, (out, in_))
-        self.assertTrue(
-            allclose(got, ref, atol=1e-3),
-            f"反量化与朴素参考不一致，max diff={abs(got - ref).max():.5f}",
+
+def test_compressed_tensors_ignore_rules():
+    """Ornith 7 条 ignore 正则：lm_head / embed_tokens / router / shared_expert_gate /
+    linear_attn 全部 / visual 全部 → BF16 直通。"""
+    cfg = resolve_checkpoint_quant("python/models/Ornith-1.5-35B-A3B-MTP-FP8")
+    assert cfg.is_layer_skipped("lm_head")
+    assert cfg.is_layer_skipped("model.language_model.embed_tokens")
+    assert cfg.is_layer_skipped("model.language_model.layers.0.mlp.gate")
+    assert cfg.is_layer_skipped("model.language_model.layers.0.linear_attn.in_proj_qkv")
+    assert not cfg.is_layer_skipped("model.language_model.layers.3.self_attn.q_proj")
+    assert not cfg.is_layer_skipped("model.language_model.layers.3.mlp.experts.0.gate_proj")
+
+
+def test_online_quant_mutually_exclusive():
+    """checkpoint 量化 + 在线量化简写互斥。"""
+    with pytest.raises(ValueError):
+        resolve_checkpoint_quant("python/models/Ornith-1.5-35B-A3B-MTP-FP8", online_quantization="fp8_per_token")
+
+
+def test_online_quant_unknown_rejected():
+    """未知简写显式报错（不静默）。"""
+    with tempfile.TemporaryDirectory() as d:
+        Path(d, "config.json").write_text(json.dumps({"architectures": ["LlamaForCausalLM"]}))
+        with pytest.raises(ValueError):
+            resolve_checkpoint_quant(d, online_quantization="NOPE")
+
+
+def test_supported_quant_registered():
+    names = list_supported_quant()
+    assert "compressed-tensors" in names
+
+
+def test_kv_bf16_vs_fp8_factor_2x():
+    bf16 = kv_bytes_per_token(2, 256, "bf16")
+    fp8 = kv_bytes_per_token(2, 256, "fp8")
+    assert bf16 == 2 * 2 * 256 * 2
+    # fp8 应约为 bf16 的一半（±scale 开销）
+    assert 0.4 <= fp8 / bf16 <= 0.6
+
+
+def test_kv_dtype_auto_for_ornith():
+    """Ornith kv_cache_scheme=null → BF16（无 fp8 显式声明）。"""
+    mode = resolve_kv_dtype("python/models/Ornith-1.5-35B-A3B-MTP-FP8", "auto")
+    assert mode == "bf16"
+
+
+def test_method_dispatch_for_compressed_tensors_layer():
+    """method.make_method_for_spec 路由：FP8 → Fp8LinearMethod。"""
+    cfg = resolve_checkpoint_quant("python/models/Ornith-1.5-35B-A3B-MTP-FP8")
+    spec = cfg.get_layer_spec("model.language_model.layers.0.mlp.experts.0.gate_proj")
+    m = make_method_for_spec(spec)
+    assert m.compute_path == "w8a16"
+
+
+def test_w4a16_dequant_correctness():
+    """int4 weight-only dequant vs 参考。"""
+    torch.manual_seed(13)
+    w4 = torch.randint(0, 255, (10, 16), dtype=torch.uint8).numpy()
+    s4 = (torch.rand(32) + 0.1).numpy()
+    from ccut.quant.weight_only import WeightOnlyMethod
+
+    m = WeightOnlyMethod(
+        LayerQuantSpec(
+            "t.int4",
+            get_quant_key("int4_w4a16_sym"),
+            scales=(ScaleDesc(name="t.int4.weight_scale", dtype="F32", shape=()),),
         )
-
-    def test_dequant_float16_output(self):
-        rng = default_rng(2)
-        out, in_, gs = 64, 128, 32
-        groups = out // gs
-        qw = rng.integers(-(2**31), 2**31, size=(out, in_ // 8), dtype=int32)
-        qz = rng.integers(0, 2**31, size=(groups, in_ // 8), dtype=int32)
-        sc = rng.standard_normal((groups, in_)).astype(float16)
-        got = dequantize_awq(qw, qz, sc, dtype="float16")
-        self.assertEqual(got.dtype, float16)
-
-    def test_real_model_tensor(self):
-        """真实张量：形状正确、数值合理（依赖本地模型文件）。"""
-        store = WeightStore(MODEL_DIR)
-        try:
-            prefix = "model.language_model.layers.0.mlp.experts.0.gate_proj"
-            qw = store.get(prefix + ".qweight")
-            qz = store.get(prefix + ".qzeros")
-            sc = store.get(prefix + ".scales")
-            self.assertEqual(list(qw.shape), [2048, 64])
-            self.assertEqual(list(qz.shape), [64, 64])
-            self.assertEqual(list(sc.shape), [64, 512])
-
-            d = dequantize_awq(qw, qz, sc)
-            self.assertEqual(list(d.shape), [2048, 512])
-            self.assertLess(abs(float(d.mean())), 0.01)
-            self.assertGreater(float(d.std()), 1e-4)
-        finally:
-            store.close()
+    )
+    x = torch.randn(4, 32).numpy()
+    y = m.apply(w4.tobytes(), {"t.int4.weight_scale": s4}, x)
+    lo = (w4 & 0x0F)
+    hi = (w4 >> 4) & 0x0F
+    lo = np.where(lo >= 8, lo - 16, lo)
+    hi = np.where(hi >= 8, hi - 16, hi)
+    W = np.empty((10, 32), dtype=np.float32)
+    W[:, 0::2] = lo * s4[0::2]
+    W[:, 1::2] = hi * s4[1::2]
+    ref = x @ W.T
+    assert np.allclose(y, ref, atol=1e-6)
 
 
-class TestQuantCompat(unittest.TestCase):
-    """量化兼容层：多规格（对称 / gptq 线性序 / group_size / bits）合成测试。"""
-
-    def _build(self, out=64, in_=128, gs=32, bits=4, sym=False, seed=3):
-        rng = default_rng(seed)
-        qw = rng.integers(-(2**31), 2**31, size=(out, in_ * bits // 32), dtype=int32)
-        qz = None if sym else rng.integers(0, 2**31, size=(out // gs, in_ * bits // 32), dtype=int32)
-        sc = rng.standard_normal((out // gs, in_)).astype(float16)
-        return qw, qz, sc
-
-    def test_sym_matches_reference(self):
-        qw, _, sc = self._build(sym=True)
-        w = _unpack_int4_colwise(qw)                     # sym 仍按 AWQ 打包 → AWQ 序
-        s = asarray(sc, dtype=float32).repeat(32, axis=0)
-        got = dequantize(qw, None, sc,
-                         QuantConfig(quant_method="awq", bits=4, group_size=32, sym=True))
-        self.assertTrue(allclose(got, w.astype(float32) * s, atol=1e-3))
-
-    def test_gptq_linear_order(self):
-        qw, qz, sc = self._build()
-        got = dequantize(qw, qz, sc, QuantConfig(quant_method="gptq", bits=4, group_size=32))
-        w = _unpack_colwise(qw, 4)
-        z = _unpack_colwise(qz, 4).astype(int16).repeat(32, axis=0)
-        s = asarray(sc, dtype=float32).repeat(32, axis=0)
-        ref = (w.astype(int16) - z).astype(float32) * s
-        self.assertTrue(allclose(got, ref, atol=1e-3))
-
-    def test_group_size_64(self):
-        qw, qz, sc = self._build(gs=64)
-        got = dequantize(qw, qz, sc, QuantConfig(quant_method="gptq", bits=4, group_size=64))
-        self.assertEqual(got.shape, (64, 128))
-
-    def test_bits8_unpack(self):
-        rng = default_rng(4)
-        qw = rng.integers(0, 2**31, size=(32, 16), dtype=int32)
-        w = _unpack_colwise(qw, 8)
-        self.assertEqual(w.shape, (32, 64))
-        self.assertTrue(w.min() >= 0 and w.max() <= 255)
-
-    def test_awq_config_parse(self):
-        cfg = QuantConfig.from_dict({"quant_method": "awq", "zero_point": True,
-                                     "group_size": 32, "bits": 4})
-        self.assertEqual(cfg.quant_method, "awq")
-        self.assertFalse(cfg.sym)
-        cfg2 = QuantConfig.from_dict({"quant_method": "gptq", "sym": True, "group_size": 128})
-        self.assertTrue(cfg2.sym)
-        self.assertEqual(cfg2.group_size, 128)
-
-
-class TestWeightStore(unittest.TestCase):
-    def test_lazy_index_and_info(self):
-        store = WeightStore(MODEL_DIR)
-        try:
-            self.assertGreater(len(store.keys()), 90000)
-            self.assertTrue(
-                store.has("model.language_model.layers.0.mlp.experts.0.gate_proj.qweight")
-            )
-            shape, dtype = store.tensor_info(
-                "model.language_model.layers.0.mlp.experts.0.gate_proj.qweight"
-            )
-            self.assertEqual(shape, [2048, 64])
-            self.assertEqual(dtype, "I32")
-        finally:
-            store.close()
-
-    def test_get_small_tensor(self):
-        store = WeightStore(MODEL_DIR)
-        try:
-            w = store.get("model.language_model.layers.0.input_layernorm.weight")
-            self.assertEqual(list(w.shape), [2048])
-        finally:
-            store.close()
-
-    def test_missing_tensor_raises(self):
-        store = WeightStore(MODEL_DIR)
-        try:
-            with self.assertRaises(KeyError):
-                store.get("not.exist.tensor")
-        finally:
-            store.close()
-
-
-if __name__ == "__main__":
-    unittest.main()
+def test_online_quantize_bf16_buffer():
+    """BF16 字节段 → FP8 码 + per-channel scale 往返。"""
+    torch.manual_seed(7)
+    wb = torch.randn(8, 16) * 0.1
+    bf16_bytes = wb.bfloat16().view(torch.int16).numpy().tobytes()
+    sc = (wb.abs().max(dim=1).values / 448.0).numpy()
+    out = np.empty((8, 16), dtype=np.uint8)
+    quantize_buffer_inplace(bf16_bytes, sc, out)
+    back = kernels.fp8_e4m3_to_float32(out.ravel()).reshape(8, 16) * sc[:, None]
+    rel = np.abs(back - wb.numpy()) / np.maximum(np.abs(wb.numpy()), 1e-2)
+    assert float(rel.max()) < 0.5  # FP8 量化 50% 容差

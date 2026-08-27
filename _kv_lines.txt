@@ -1,0 +1,50 @@
+ 116|         b.token_ids = []
+ 117|         b.refcount = 0
+ 118|         b.on_disk = False
+ 119| 
+ 120|     # -- 读写 ---------------------------------------------------------------
+ 121|     def write_block(
+ 122|         self,
+ 123|         block_id: int,
+ 124|         token_ids: list[int],
+ 125|         k: np.ndarray,
+ 126|         v: np.ndarray,
+ 127|         prev_hash: int,
+ 128|     ) -> int:
+ 129|         """写入满块并注册哈希。``k``/``v``: [block_tokens, kv_heads, head_dim]。
+ 130| 
+ 131|         返回块哈希（coordinator 用它挂 L2 索引）。
+ 132|         """
+ 133|         b = self.blocks[block_id]
+ 134|         b.token_ids = list(token_ids)
+ 135|         b.prev_hash = prev_hash
+ 136|         b.block_hash = block_hash(prev_hash, token_ids)
+ 137|         b.last_access_step = self._step
+ 138|         b.on_disk = False
+ 139|         off = block_id * self.block_bytes
+ 140|         seg = self._buf[off : off + k.nbytes]
+ 141|         seg[:] = k.astype(np.float32, copy=False).reshape(-1).tobytes()
+ 142|         seg = self._buf[off + k.nbytes : off + k.nbytes + v.nbytes]
+ 143|         seg[:] = v.astype(np.float32, copy=False).reshape(-1).tobytes()
+ 144|         # 旧哈希解注册（槽位复用时）
+ 145|         if b.prev_hash or b.token_ids:
+ 146|             pass
+ 147|         self._hash2id[b.block_hash] = block_id
+ 148|         return b.block_hash
+ 149| 
+ 150|     def read_kv(self, block_id: int) -> tuple[np.ndarray, np.ndarray]:
+ 151|         b = self.blocks[block_id]
+ 152|         n = len(b.token_ids)
+ 153|         off = block_id * self.block_bytes
+ 154|         k_bytes = self._buf[off : off + n * self.kv_heads * self.head_dim * self.dtype.itemsize]
+ 155|         k = np.frombuffer(bytes(k_bytes), dtype=self.dtype).reshape(n, self.kv_heads, self.head_dim)
+ 156|         off2 = off + k.nbytes
+ 157|         v = np.frombuffer(bytes(self._buf[off2 : off2 + k.nbytes]), dtype=self.dtype).reshape(
+ 158|             n, self.kv_heads, self.head_dim
+ 159|         )
+ 160|         b.last_access_step = self._step
+ 161|         return k.copy(), v.copy()
+ 162| 
+ 163|     def payload_bytes(self, block_id: int) -> bytes:
+ 164|         """整块序列化（L2 下沉用）：``K 段 || V 段``（仅 token_ids 长度部分）。"""
+ 165|         b = self.blocks[block_id]

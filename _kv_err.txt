@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "<string>", line 10, in <module>
+    bh = pool.write_block(bid, [1,2,3,4], k, v, PREFIX_HASH_NULL)
+  File "D:\AiModel\MiniCoder\Engine\python\ccut\kv\blocks.py", line 141, in write_block
+    seg[:] = k.astype(np.float32, copy=False).reshape(-1).tobytes()
+    ~~~^^^
+ValueError: invalid literal for int() with base 10: b'\xa5\xe1\xd8>]=\x9b>\x07v\x80?\x85\xa6\xdb\xbf\xd4;\x07@\x9bI\xf8\xbe\x1b]\x02@\x7fB\x9f?{\xa1\x9a?\xd2\r\xe1\xbf\x83\x00\xad?\xcf\x08\xac\xbeK\x9b\x9a\xbe_\x05t\xbf\xbcV\x07\xbf5\xefF\xbfI\x18*\xc0

@@ -1,9 +1,32 @@
-# Python 3.14 Compatible Versions
-torch>=2.4.0
-transformers>=4.44.0
-accelerate>=0.34.0
-sentencepiece>=0.2.0
-protobuf>=4.25.0
-safetensors>=0.4.0
-# AWQ 4bit 量化模型加载必需（transformers 5.x 依赖 gptqmodel 而非 autoawq）
-gptqmodel>=2.0.0
+# CostCut-Infer 依赖（pip install -r requirements.txt）
+# 注意：本机是 Python 3.14.5（CPython），numba 0.67.0 已装；torch 2.13.0+cpu 已装。
+# transformers 5.15+ 仅 L1 兜底用（中型模型，非 35B）。
+
+# --- 核心运行时（已装） ---
+numpy>=2.0
+psutil>=5.9
+safetensors>=0.4
+tokenizers>=0.15
+
+# --- 数值加速（已装） ---
+numba>=0.58
+torch>=2.0  # CPU 推理（fvcore/mkldnn 已通过 torch 引入）
+
+# --- HTTP 入口层（api_server.py / sdk.py）---
+# 如不需要 API 服务可省略
+fastapi>=0.110
+uvicorn[standard]>=0.27
+httpx>=0.27
+
+# --- TUI（rich）---
+# 缺则回退到 print（见 tui_chat.py）
+rich>=13.0
+
+# --- 量化备选（INT8 / FP8 / MX）---
+# 已在 torch 内：e4m3fn 原生 dtype；MX/NVFP4 暂不依赖第三方
+
+# --- L1 兜底后端（可选项；不用 L1 可省）---
+transformers>=4.40
+
+# --- 投机解码 / KV 压缩备选（可选项）---
+# lz4>=4.0  # kv_l2_compression="lz4" 时启用
